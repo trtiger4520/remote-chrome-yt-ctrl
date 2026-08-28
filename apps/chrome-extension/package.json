@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@microsoft/signalr": "10.0.11",
-    "@remote-youtube/protocol": "workspace:0.1.0"
+    "@remote-youtube/protocol": "workspace:0.1.0",
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
     "@types/chrome": "0.1.43",

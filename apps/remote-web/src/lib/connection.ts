@@ -10,6 +10,7 @@ import {
   type SystemStatus,
 } from '@remote-youtube/protocol';
 import { reactive } from 'vue';
+import { v7 as uuidv7 } from 'uuid';
 
 export type ConnectionPhase = 'unpaired' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
@@ -191,7 +192,7 @@ export function createRemoteConnection(token: string | null) {
 export function createCommand(action: CommandRequest['action'], values: Partial<CommandRequest> = {}): CommandRequest {
   return {
     protocolVersion: 1,
-    commandId: crypto.randomUUID(),
+    commandId: uuidv7(),
     action,
     ...values,
   } as CommandRequest;

@@ -9,6 +9,7 @@ import {
   type CommandResult,
   type PlayerState,
 } from '@remote-youtube/protocol';
+import { v7 as uuidv7 } from 'uuid';
 import { isSupportedYouTubeUrl, normalizeYouTubeUrl } from './targeting.js';
 
 const defaultServerUrl = 'http://127.0.0.1:5080';
@@ -79,7 +80,7 @@ async function executeCommand(rawCommand: unknown): Promise<CommandResult> {
       'commandId' in rawCommand &&
       typeof rawCommand.commandId === 'string'
         ? rawCommand.commandId
-        : crypto.randomUUID();
+        : uuidv7();
     return {
       commandId,
       success: false,

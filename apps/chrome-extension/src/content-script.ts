@@ -5,10 +5,11 @@ import {
   type CommandRequest,
   type PlayerState,
 } from '@remote-youtube/protocol';
+import { v7 as uuidv7 } from 'uuid';
 
 let video: HTMLVideoElement | null = null;
 let sequence = 0;
-const pageInstanceId = crypto.randomUUID();
+const pageInstanceId = uuidv7();
 let reportTimer: ReturnType<typeof setTimeout> | undefined;
 let lastReportAt = 0;
 let observer: MutationObserver | undefined;
@@ -177,7 +178,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
     const parsed = commandRequestSchema.safeParse(typed.command);
     if (!parsed.success) {
       sendResponse({
-        commandId: crypto.randomUUID(),
+        commandId: uuidv7(),
         success: false,
         status: 'rejected',
         errorCode: errorCodes.invalidCommand,

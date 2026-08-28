@@ -20,6 +20,9 @@ importers:
       '@remote-youtube/protocol':
         specifier: workspace:0.1.0
         version: link:../../packages/protocol
+      uuid:
+        specifier: ^14.0.2
+        version: 14.0.2
     devDependencies:
       '@types/chrome':
         specifier: 0.1.43
@@ -54,6 +57,9 @@ importers:
       '@remote-youtube/protocol':
         specifier: workspace:0.1.0
         version: link:../../packages/protocol
+      uuid:
+        specifier: ^14.0.2
+        version: 14.0.2
       vue:
         specifier: 3.5.42
         version: 3.5.42(typescript@5.9.3)
@@ -1378,6 +1384,10 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
+
+  uuid@14.0.2:
+    resolution: {integrity: sha512-xZe/16rV4aa+HGSOCiY2YeLT1OybRLrrkL/Rqaq7p7GMVXjFh+6wN4oMYgjFmnSnhY8t6Xpdl2l9qmnHYuMHwQ==}
+    hasBin: true
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -2742,6 +2752,8 @@ snapshots:
       requires-port: 1.0.0
 
   util-deprecate@1.0.2: {}
+
+  uuid@14.0.2: {}
 
   vite-node@3.2.4(@types/node@24.13.3):
     dependencies:
