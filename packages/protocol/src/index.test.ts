@@ -26,6 +26,18 @@ describe('commandRequestSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('accepts value-free display toggles', () => {
+    for (const action of ['toggleFullscreen', 'toggleCaptions']) {
+      const result = commandRequestSchema.safeParse({
+        protocolVersion: PROTOCOL_VERSION,
+        commandId: '8f33329a-8b37-4b7a-b7e5-a9b8a9da84a4',
+        action,
+      });
+
+      expect(result.success).toBe(true);
+    }
+  });
+
   it('accepts the checked-in cross-language command fixture', () => {
     const fixture = JSON.parse(
       readFileSync(resolve(import.meta.dirname, '../../../tests/protocol-fixtures/command-request.json'), 'utf8'),

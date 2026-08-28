@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 1,
+  "protocolVersion": 2,
   "commandId": "8f33329a-8b37-4b7a-b7e5-a9b8a9da84a4",
   "action": "seekTo",
   "numberValue": 12.5

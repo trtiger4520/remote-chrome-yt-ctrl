@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="control-grid" aria-label="音量與播放速度">
+      <section class="control-grid" aria-label="播放選項">
         <div class="control-block volume-block">
           <div class="control-label-row">
             <span class="section-index">02 / VOLUME</span>
@@ -302,11 +302,44 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
+        <div class="control-block toggle-block">
+          <div class="control-label-row">
+            <span class="section-index">04 / DISPLAY</span><strong>{{ player?.isFullscreen ? '開啟' : '關閉' }}</strong>
+          </div>
+          <button
+            class="toggle-button"
+            type="button"
+            :class="{ active: player?.isFullscreen }"
+            :disabled="!isReady"
+            :aria-pressed="player?.isFullscreen ?? false"
+            :aria-label="player?.isFullscreen ? '結束全螢幕' : '開啟全螢幕'"
+            @click="runCommand('toggleFullscreen')"
+          >
+            {{ player?.isFullscreen ? '結束全螢幕' : '全螢幕' }}
+          </button>
+        </div>
+        <div class="control-block toggle-block">
+          <div class="control-label-row">
+            <span class="section-index">05 / CAPTIONS</span>
+            <strong>{{ player?.captionsEnabled ? '開啟' : '關閉' }}</strong>
+          </div>
+          <button
+            class="toggle-button"
+            type="button"
+            :class="{ active: player?.captionsEnabled }"
+            :disabled="!isReady"
+            :aria-pressed="player?.captionsEnabled ?? false"
+            :aria-label="player?.captionsEnabled ? '關閉字幕' : '開啟字幕'"
+            @click="runCommand('toggleCaptions')"
+          >
+            {{ player?.captionsEnabled ? '字幕開啟中' : '字幕' }}
+          </button>
+        </div>
       </section>
 
       <details class="navigation-panel">
         <summary class="section-heading">
-          <span class="section-index">04 / LOAD PRINT</span>
+          <span class="section-index">06 / LOAD PRINT</span>
           <span class="microcopy">YOUTUBE URL <span aria-hidden="true">⌄</span></span>
         </summary>
         <form class="url-form" @submit.prevent="submitNavigation">

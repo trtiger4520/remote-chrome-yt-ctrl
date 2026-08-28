@@ -21,6 +21,10 @@ function isSupportedVideoPage(): boolean {
   );
 }
 
+function captionsEnabled(): boolean {
+  return Array.from(video?.textTracks ?? []).some((track) => track.mode === 'showing');
+}
+
 function currentState(): PlayerState | null {
   if (!video || !isSupportedVideoPage()) return null;
   const hasMetadata = Number.isFinite(video.duration);
@@ -40,6 +44,8 @@ function currentState(): PlayerState | null {
     playbackRate: video.playbackRate,
     isLive,
     canSeek: hasMetadata && !isLive && video.seekable.length > 0,
+    isFullscreen: document.fullscreenElement !== null,
+    captionsEnabled: captionsEnabled(),
     capturedAtUtc: new Date().toISOString(),
   };
 }
@@ -89,6 +95,15 @@ function bind(nextVideo: HTMLVideoElement): void {
   const timeHandler = () => report(false);
   nextVideo.addEventListener('timeupdate', timeHandler);
   listeners.push(() => nextVideo.removeEventListener('timeupdate', timeHandler));
+  const captionsHandler = () => report(true);
+  nextVideo.textTracks.addEventListener('change', captionsHandler);
+  nextVideo.textTracks.addEventListener('addtrack', captionsHandler);
+  nextVideo.textTracks.addEventListener('removetrack', captionsHandler);
+  listeners.push(() => {
+    nextVideo.textTracks.removeEventListener('change', captionsHandler);
+    nextVideo.textTracks.removeEventListener('addtrack', captionsHandler);
+    nextVideo.textTracks.removeEventListener('removetrack', captionsHandler);
+  });
   report(true);
 }
 
@@ -128,6 +143,16 @@ async function execute(command: CommandRequest) {
         if (video.paused) await video.play();
         else video.pause();
         break;
+      case 'toggleCaptions': {
+        const tracks = Array.from(video.textTracks).filter(
+          (track) => track.kind === 'captions' || track.kind === 'subtitles',
+        );
+        if (tracks.length === 0) throw new Error('No captions are available for this video');
+        const shouldEnable = !tracks.some((track) => track.mode === 'showing');
+        for (const track of tracks) track.mode = 'hidden';
+        if (shouldEnable) tracks[0]!.mode = 'showing';
+        break;
+      }
       case 'seekTo':
         if (!Number.isFinite(video.duration) || command.numberValue === undefined) throw new Error('seek unavailable');
         video.currentTime = Math.min(video.duration, Math.max(0, command.numberValue));
@@ -154,9 +179,9 @@ async function execute(command: CommandRequest) {
     return { commandId: command.commandId, success: true, status: 'completed' as const };
   } catch (error) {
     const errorCode =
-      error instanceof DOMException && error.name === 'NotAllowedError'
+      command.action === 'togglePlayback' && error instanceof DOMException && error.name === 'NotAllowedError'
         ? errorCodes.autoplayBlocked
-        : errorCodes.videoMissing;
+        : errorCodes.internalError;
     return {
       commandId: command.commandId,
       success: false,

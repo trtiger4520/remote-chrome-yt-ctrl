@@ -2,7 +2,7 @@ namespace RemoteChromeYouTubeController.Server.Contracts;
 
 public static class ProtocolConstants
 {
-    public const int Version = 1;
+    public const int Version = 2;
 }
 
 public sealed record CommandRequest(
@@ -44,6 +44,8 @@ public sealed record PlayerState(
     double PlaybackRate,
     bool IsLive,
     bool CanSeek,
+    bool IsFullscreen,
+    bool CaptionsEnabled,
     DateTimeOffset CapturedAtUtc);
 
 public sealed record SystemStatus(

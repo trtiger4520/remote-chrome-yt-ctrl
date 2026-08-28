@@ -26,7 +26,7 @@ public sealed class CommandValidator
 
         var result = action switch
         {
-            "togglePlayback" => RequireNoValues(command),
+            "togglePlayback" or "toggleFullscreen" or "toggleCaptions" => RequireNoValues(command),
             "seekTo" => RequireNumber(command, value => value >= 0, "seekTo requires a non-negative number"),
             "seekBy" => RequireNumber(command, value => Math.Abs(value) <= 60, "seekBy must be between -60 and 60 seconds"),
             "setVolume" => RequireNumber(command, value => value is >= 0 and <= 1, "volume must be between 0 and 1"),
@@ -43,7 +43,7 @@ public sealed class CommandValidator
 
     private static string? RequireNoValues(CommandRequest command) =>
         command.NumberValue is not null || command.BooleanValue is not null || command.StringValue is not null
-            ? "togglePlayback does not accept a value"
+            ? $"{command.Action} does not accept a value"
             : null;
 
     private static string? RequireNumber(CommandRequest command, Func<double, bool> predicate, string message) =>

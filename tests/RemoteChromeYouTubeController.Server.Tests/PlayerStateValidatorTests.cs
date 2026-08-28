@@ -22,5 +22,5 @@ public sealed class PlayerStateValidatorTests
     }
 
     private static PlayerState CreateState(double? duration, bool isLive, bool canSeek) =>
-        new(1, 1, "42", "Fixture", "https://www.youtube.com/watch?v=fixture", 2, duration, false, false, 0.5, 1, isLive, canSeek, DateTimeOffset.UtcNow);
+        new(ProtocolConstants.Version, 1, "42", "Fixture", "https://www.youtube.com/watch?v=fixture", 2, duration, false, false, 0.5, 1, isLive, canSeek, false, false, DateTimeOffset.UtcNow);
 }

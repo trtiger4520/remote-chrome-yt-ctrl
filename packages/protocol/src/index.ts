@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = 2 as const;
 
 export const commandActionSchema = z.enum([
   'togglePlayback',
+  'toggleFullscreen',
+  'toggleCaptions',
   'seekTo',
   'seekBy',
   'setVolume',
@@ -53,7 +55,7 @@ export const commandRequestSchema = z
       !requireBoolean &&
       (command.numberValue !== undefined || command.booleanValue !== undefined || command.stringValue !== undefined)
     ) {
-      context.addIssue({ code: 'custom', path: ['action'], message: 'togglePlayback does not accept a value' });
+      context.addIssue({ code: 'custom', path: ['action'], message: `${command.action} does not accept a value` });
     }
     if (
       command.action === 'setVolume' &&
@@ -98,6 +100,8 @@ export const playerStateSchema = z.object({
   playbackRate: finiteNumber.positive(),
   isLive: z.boolean(),
   canSeek: z.boolean(),
+  isFullscreen: z.boolean(),
+  captionsEnabled: z.boolean(),
   capturedAtUtc: z.string().datetime({ offset: true }),
 });
 export type PlayerState = z.infer<typeof playerStateSchema>;

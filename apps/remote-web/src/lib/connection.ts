@@ -4,6 +4,7 @@ import {
   commandResultSchema,
   playerStateSchema,
   systemStatusSchema,
+  PROTOCOL_VERSION,
   type CommandRequest,
   type CommandResult,
   type PlayerState,
@@ -191,7 +192,7 @@ export function createRemoteConnection(token: string | null) {
 
 export function createCommand(action: CommandRequest['action'], values: Partial<CommandRequest> = {}): CommandRequest {
   return {
-    protocolVersion: 1,
+    protocolVersion: PROTOCOL_VERSION,
     commandId: uuidv7(),
     action,
     ...values,

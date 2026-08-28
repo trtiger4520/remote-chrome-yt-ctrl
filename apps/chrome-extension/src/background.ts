@@ -104,6 +104,8 @@ async function executeCommand(rawCommand: unknown): Promise<CommandResult> {
     };
   }
 
+  if (command.action === 'toggleFullscreen') return toggleFullscreen(command, tab);
+
   try {
     const result = await chrome.tabs.sendMessage(tab.id, { type: 'executeCommand', command });
     const parsedResult = commandResultSchema.safeParse(result);
@@ -123,6 +125,25 @@ async function executeCommand(rawCommand: unknown): Promise<CommandResult> {
       status: 'rejected',
       errorCode: 'video_missing',
       message: 'The YouTube video is not ready',
+    };
+  }
+}
+
+async function toggleFullscreen(command: CommandRequest, tab: chrome.tabs.Tab): Promise<CommandResult> {
+  try {
+    const targetWindow = await chrome.windows.get(tab.windowId);
+    await chrome.windows.update(tab.windowId, {
+      state: targetWindow.state === 'fullscreen' ? 'normal' : 'fullscreen',
+    });
+    await refreshTarget(tab);
+    return { commandId: command.commandId, success: true, status: 'completed' };
+  } catch {
+    return {
+      commandId: command.commandId,
+      success: false,
+      status: 'rejected',
+      errorCode: 'internal_error',
+      message: 'Unable to change the Chrome window fullscreen state',
     };
   }
 }
@@ -157,19 +178,21 @@ async function navigate(command: CommandRequest): Promise<CommandResult> {
   }
 }
 
-function normalizeState(rawState: unknown, tabId: number): PlayerState | null {
+async function normalizeState(rawState: unknown, tabId: number, windowId: number): Promise<PlayerState | null> {
   const parsed = playerStateSchema.safeParse(rawState);
   if (!parsed.success) return null;
+  const targetWindow = await chrome.windows.get(windowId).catch(() => null);
   const normalized = playerStateSchema.safeParse({
     ...parsed.data,
     targetKey: `${tabId}:${parsed.data.targetKey}`,
+    isFullscreen: targetWindow?.state === 'fullscreen',
   });
   return normalized.success ? normalized.data : null;
 }
 
-async function publishState(rawState: unknown, tabId: number): Promise<void> {
+async function publishState(rawState: unknown, tabId: number, windowId: number): Promise<void> {
   if (!connection || connection.state !== HubConnectionState.Connected) return;
-  const state = normalizeState(rawState, tabId);
+  const state = await normalizeState(rawState, tabId, windowId);
   if (state) await connection.invoke('PublishState', state).catch(() => undefined);
   else await connection.invoke('ClearState').catch(() => undefined);
 }
@@ -182,7 +205,7 @@ async function refreshTarget(tab: chrome.tabs.Tab | null): Promise<void> {
   }
 
   const state = await chrome.tabs.sendMessage(tab.id, { type: 'requestState' }).catch(() => null);
-  await publishState(state, tab.id);
+  await publishState(state, tab.id, tab.windowId);
 }
 
 function attachHandlers(): void {
@@ -279,7 +302,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   if (typed.type === 'playerState' && sender.tab?.id !== undefined) {
     const tabId = sender.tab.id;
     if (targetTabId === null || targetTabId === tabId) {
-      void saveTarget(tabId).then(() => publishState(typed.state, tabId));
+      void saveTarget(tabId).then(() => publishState(typed.state, tabId, sender.tab!.windowId));
     }
   }
 });

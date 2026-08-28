@@ -1,5 +1,5 @@
 {
-  "protocolVersion": 1,
+  "protocolVersion": 2,
   "sequence": 12,
   "targetKey": "42",
   "title": "Fixture video",
@@ -12,5 +12,7 @@
   "playbackRate": 1,
   "isLive": false,
   "canSeek": true,
+  "isFullscreen": false,
+  "captionsEnabled": false,
   "capturedAtUtc": "2026-08-28T12:00:00.000+00:00"
 }

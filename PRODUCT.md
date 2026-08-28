@@ -29,9 +29,9 @@ The server runs as a console application on a Windows computer and binds to the 
 ## Capabilities and Constraints
 
 - SignalR carries commands and live state between the phone and server, and between the server and Extension
-- The first version supports play/pause, seek by ten seconds, absolute seek, volume, mute, playback rate, navigation, title, time, duration, and connection status
+- The first version supports play/pause, seek by ten seconds, absolute seek, volume, mute, playback rate, Chrome window fullscreen, captions, navigation, title, time, duration, and connection status
 - The active or most recently active supported YouTube tab is the automatic target; there is no tab selector in version one
-- Live streams are recognized and keep playback, volume, mute, and rate controls while seeking is disabled
+- Live streams are recognized and keep playback, volume, mute, rate, fullscreen, and caption controls while seeking is disabled
 - A QR pairing flow creates a persistent random token for the phone; the Extension endpoint accepts only loopback connections
 - Version one is private-LAN HTTP only and must not be exposed directly to the public Internet
 - Version one does not include a database, Docker, Windows Service, Cloudflare Tunnel, Chrome Web Store publication, or other browsers
