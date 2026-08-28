@@ -1,0 +1,22 @@
+{
+  "name": "remote-chrome-youtube-controller",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "build": "pnpm --filter @remote-youtube/protocol build && pnpm --filter @remote-youtube/remote-web build && pnpm --filter @remote-youtube/chrome-extension build",
+    "dev:web": "pnpm --filter @remote-youtube/remote-web dev",
+    "dev:extension": "pnpm --filter @remote-youtube/chrome-extension dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format:check": "pnpm -r format:check",
+    "publish": "pwsh ./scripts/publish.ps1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11.0.0"
+  }
+}

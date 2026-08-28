@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>RemoteChromeYouTubeController.Server</RootNamespace>
+    <AssemblyName>RemoteChromeYouTubeController.Server</AssemblyName>
+    <UserSecretsId>remote-chrome-youtube-controller</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="QRCoder" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\..\artifacts\remote-web')">
+    <None Include="$(MSBuildThisFileDirectory)..\..\artifacts\remote-web\**\*"
+          Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToPublishDirectory="PreserveNewest"
+          Exclude="$(MSBuildThisFileDirectory)..\..\artifacts\remote-web\**\*.map" />
+  </ItemGroup>
+</Project>

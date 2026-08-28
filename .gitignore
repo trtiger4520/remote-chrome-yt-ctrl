@@ -1,0 +1,30 @@
+# .NET
+bin/
+obj/
+.vs/
+TestResults/
+*.user
+*.suo
+
+# Node / Vite
+node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# Generated artifacts
+artifacts/
+coverage/
+playwright-report/
+test-results/
+
+# Local product configuration and secrets
+.impeccable/config.local.json
+.env
+.env.*
+!.env.example
+
+# OS
+Thumbs.db
+Desktop.ini
+

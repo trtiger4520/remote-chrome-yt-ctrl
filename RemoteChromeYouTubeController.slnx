@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/RemoteChromeYouTubeController.Server/RemoteChromeYouTubeController.Server.csproj" />
+  <Project Path="tests/RemoteChromeYouTubeController.Server.Tests/RemoteChromeYouTubeController.Server.Tests.csproj" />
+</Solution>
