@@ -17,6 +17,7 @@ artifacts/
 coverage/
 playwright-report/
 test-results/
+.codegraph/
 
 # Local product configuration and secrets
 .impeccable/config.local.json
