@@ -4,11 +4,13 @@ import {
   commandResultSchema,
   playerStateSchema,
   systemStatusSchema,
+  videoMenuSchema,
   PROTOCOL_VERSION,
   type CommandRequest,
   type CommandResult,
   type PlayerState,
   type SystemStatus,
+  type VideoMenu,
 } from '@remote-youtube/protocol';
 import { reactive } from 'vue';
 import { v7 as uuidv7 } from 'uuid';
@@ -20,6 +22,7 @@ export interface RemoteConnectionState {
   token: string | null;
   status: SystemStatus;
   player: PlayerState | null;
+  videoMenu: VideoMenu | null;
   errorMessage: string | null;
 }
 
@@ -37,6 +40,7 @@ export function createRemoteConnection(token: string | null) {
     token,
     status: defaultStatus(),
     player: null,
+    videoMenu: null,
     errorMessage: null,
   });
 
@@ -63,6 +67,24 @@ export function createRemoteConnection(token: string | null) {
       return;
     }
     state.player = parsed.data;
+  };
+
+  const applyVideoMenu = (payload: unknown) => {
+    if (payload === null) {
+      state.videoMenu = null;
+      return;
+    }
+
+    const parsed = videoMenuSchema.safeParse(payload);
+    if (!parsed.success) {
+      return;
+    }
+
+    const current = state.videoMenu;
+    if (current && current.targetKey === parsed.data.targetKey && parsed.data.sequence < current.sequence) {
+      return;
+    }
+    state.videoMenu = parsed.data;
   };
 
   const scheduleStart = (delayMs: number) => {
@@ -94,11 +116,12 @@ export function createRemoteConnection(token: string | null) {
       await connection.start();
       state.phase = 'connected';
       state.status = { ...state.status, serverConnected: true, updatedAtUtc: new Date().toISOString() };
-      const snapshot = await connection.invoke<{ status: unknown; state: unknown }>('GetSnapshot');
+      const snapshot = await connection.invoke<{ status: unknown; state: unknown; menu?: unknown }>('GetSnapshot');
       applyStatus(snapshot.status);
       if (snapshot.state) {
         applyPlayerState(snapshot.state);
       }
+      applyVideoMenu(snapshot.menu);
     } catch (error) {
       const message = error instanceof Error ? error.message : '無法連線至 Server';
       state.phase = message.includes('401') || message.includes('Unauthorized') ? 'error' : 'reconnecting';
@@ -130,6 +153,7 @@ export function createRemoteConnection(token: string | null) {
     }
     connection.on('SystemStatus', applyStatus);
     connection.on('PlayerState', applyPlayerState);
+    connection.on('VideoMenuUpdated', applyVideoMenu);
     connection.on('extensionOffline', () => {
       const statusWithoutTitle = { ...state.status };
       delete statusWithoutTitle.targetTitle;
@@ -141,6 +165,7 @@ export function createRemoteConnection(token: string | null) {
         updatedAtUtc: new Date().toISOString(),
       };
       state.player = null;
+      state.videoMenu = null;
     });
     connection.onreconnecting(() => {
       state.phase = 'reconnecting';
@@ -150,10 +175,11 @@ export function createRemoteConnection(token: string | null) {
       state.phase = 'connected';
       state.status = { ...state.status, serverConnected: true };
       void connection
-        ?.invoke<{ status: unknown; state: unknown }>('GetSnapshot')
+        ?.invoke<{ status: unknown; state: unknown; menu?: unknown }>('GetSnapshot')
         .then((snapshot) => {
           applyStatus(snapshot.status);
           if (snapshot.state) applyPlayerState(snapshot.state);
+          applyVideoMenu(snapshot.menu);
         })
         .catch(() => undefined);
     });

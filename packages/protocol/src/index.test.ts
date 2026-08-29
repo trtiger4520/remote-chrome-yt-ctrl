@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { commandRequestSchema, playerStateSchema, PROTOCOL_VERSION } from './index.js';
+import { commandRequestSchema, playerStateSchema, PROTOCOL_VERSION, videoMenuSchema } from './index.js';
 
 describe('commandRequestSchema', () => {
   it('accepts a valid seek command', () => {
@@ -52,5 +52,13 @@ describe('commandRequestSchema', () => {
     ) as unknown;
 
     expect(playerStateSchema.safeParse(fixture).success).toBe(true);
+  });
+
+  it('accepts the checked-in cross-language video menu fixture', () => {
+    const fixture = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, '../../../tests/protocol-fixtures/video-menu.json'), 'utf8'),
+    ) as unknown;
+
+    expect(videoMenuSchema.safeParse(fixture).success).toBe(true);
   });
 });

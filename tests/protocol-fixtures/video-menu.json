@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 2,
+  "sequence": 4,
+  "targetKey": "42:page-instance",
+  "items": [
+    {
+      "title": "Next video",
+      "url": "https://www.youtube.com/watch?v=next"
+    },
+    {
+      "title": "Next short",
+      "url": "https://www.youtube.com/shorts/short"
+    }
+  ],
+  "capturedAtUtc": "2026-08-29T12:00:00.000+00:00"
+}

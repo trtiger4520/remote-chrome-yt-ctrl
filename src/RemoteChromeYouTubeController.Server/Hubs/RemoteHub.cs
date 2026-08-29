@@ -25,6 +25,11 @@ public sealed class RemoteHub(
         {
             await Clients.Caller.PlayerState(state);
         }
+        var menu = registry.GetVideoMenu();
+        if (menu is not null)
+        {
+            await Clients.Caller.VideoMenuUpdated(menu);
+        }
 
         await base.OnConnectedAsync();
     }
@@ -81,5 +86,5 @@ public sealed class RemoteHub(
     }
 
     public Task<RemoteSnapshot> GetSnapshot() =>
-        Task.FromResult(new RemoteSnapshot(registry.GetStatus(), registry.GetState()));
+        Task.FromResult(new RemoteSnapshot(registry.GetStatus(), registry.GetState(), registry.GetVideoMenu()));
 }

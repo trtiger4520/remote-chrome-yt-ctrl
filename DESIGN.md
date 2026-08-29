@@ -20,7 +20,8 @@
 4. 影片進度、目前時間與總時間
 5. 大型倒退、播放／暫停、前進控制
 6. 音量與靜音、倍速、字幕、全螢幕快速控制
-7. 折疊式 YouTube URL 輸入
+7. 畫面上的影片清單，手動選擇下一部
+8. 折疊式 YouTube URL 輸入
 
 控制中心使用四欄 responsive grid。320px 以上維持雙欄上層模組，360×800 與 390×844 必須在首屏看見主要播放控制，桌面版維持最大約 760px 置中寬度
 
@@ -31,6 +32,7 @@
 - Extension offline、無 target、loading、unsupported：在連線模組與狀態列清楚說明下一步
 - ready：啟用完整控制面板，toggle 的 active 樣式以遠端回傳狀態為準
 - live 或 `canSeek=false`：停用進度與前後 seek，保留播放、音量、倍速、全螢幕與字幕
+- 影片選單：顯示目前 YouTube 畫面已載入的其他影片連結，使用者點選後才切換
 - command error：顯示五秒可消失的錯誤列，不重置整個連線
 
 按下控制時使用約 160ms 的縮放回饋與約 220ms 的回彈，狀態切換使用短促的背景與邊緣轉換。`prefers-reduced-motion` 會關閉位移、縮放與脈動，`aria-live` 僅用於連線與錯誤，不播報每次 timeupdate
@@ -39,7 +41,8 @@
 
 - 影片標題沿用協定允許的最多 500 字元並限制視覺行數，完整內容保留於 title
 - 影片 URL 沿用協定的 URL 驗證與省略顯示，不產生縮圖 placeholder，因為 PlayerState 沒有縮圖資料
-- 不修改 PlayerState、SystemStatus、CommandRequest、SignalR Hub、Server 或 Extension
+- 影片選單使用獨立的 `VideoMenu` 狀態，來源是 Extension 從目前 YouTube DOM 擷取的可見影片連結
+- 手機選單只送出使用者明確點選的 `navigate` 指令，不自動續播或自動切換
 - `/connect` 配對頁與其既有工作樹修改維持原樣
 - 第一版維持私人 LAN HTTP，介面不暗示公開網路部署或額外安全能力
 

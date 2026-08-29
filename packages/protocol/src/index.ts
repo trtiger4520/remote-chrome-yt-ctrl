@@ -106,6 +106,21 @@ export const playerStateSchema = z.object({
 });
 export type PlayerState = z.infer<typeof playerStateSchema>;
 
+export const videoMenuItemSchema = z.object({
+  title: z.string().max(500),
+  url: z.string().url().max(2048),
+});
+export type VideoMenuItem = z.infer<typeof videoMenuItemSchema>;
+
+export const videoMenuSchema = z.object({
+  protocolVersion: z.literal(PROTOCOL_VERSION),
+  sequence: z.number().int().nonnegative(),
+  targetKey: z.string().max(100),
+  items: z.array(videoMenuItemSchema).max(20),
+  capturedAtUtc: z.string().datetime({ offset: true }),
+});
+export type VideoMenu = z.infer<typeof videoMenuSchema>;
+
 export const systemStatusSchema = z.object({
   serverConnected: z.boolean(),
   extensionConnected: z.boolean(),

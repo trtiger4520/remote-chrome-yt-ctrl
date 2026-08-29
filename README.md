@@ -1,6 +1,6 @@
 # Remote Chrome YouTube Controller
 
-YouTube Remote 是一套只在私人區網使用的手機遙控器。手機開啟 Server 提供的 Vue 介面，Server 透過 SignalR 將指令轉給 Chrome Manifest V3 Extension，再由 YouTube 分頁中的 `<video>` 元素直接執行控制
+YouTube Remote 是一套只在私人區網使用的手機遙控器。手機開啟 Server 提供的 Vue 介面，Server 透過 SignalR 將指令轉給 Chrome Manifest V3 Extension，再由 YouTube 分頁中的 `<video>` 元素直接執行控制；目前畫面上的其他影片連結也會整理成手機上的手動選單，不會自動續播
 
 第一版刻意不使用 CDP、不要求重新開啟 Chrome、不建立第二個 Chrome Profile，也不會把既有登入狀態送到 Server
 
@@ -49,7 +49,8 @@ Vite 遙控介面預設使用 `http://localhost:5173`，並將 `/hubs` 與 `/api
 3. 選擇「載入未封裝項目」，指定 `artifacts/chrome-extension`
 4. 在 Chrome 開啟 YouTube 影片，確認 Extension service worker 已連線
 5. 用手機掃描 `/connect` 頁面的 QR Code，手機頁面會讀取 URL fragment 中的 Token，存入 `localStorage` 後立即清除 fragment
-6. 回到 YouTube 分頁操作播放、暫停、前後十秒、進度、音量、靜音、倍速或貼上 YouTube 網址
+6. 回到 YouTube 分頁操作播放、暫停、前後十秒、進度、音量、靜音、倍速，或從「畫面上的影片」選單手動切換
+7. 需要時可在折疊式輸入區貼上 HTTPS YouTube 網址
 
 配對 Token 會保存於 `%LOCALAPPDATA%\RemoteChromeYouTubeController\pairing-token`。需要換發 Token 時使用 `--reset-pairing`，之後重新整理 `/connect` 頁面即可顯示新的 QR Code
 
@@ -100,6 +101,7 @@ Playwright 目前涵蓋未配對引導、行動／窄螢幕／桌面 viewport、
 - 確認目前分頁是支援的 YouTube 影片網址，而不是首頁或嵌入播放器
 - 開啟該分頁的 DevTools Console，確認 content script 已重新注入
 - YouTube SPA 換頁時 Extension 會透過 `yt-navigate-finish`、MutationObserver 與 video lifecycle event 重新綁定 `<video>`
+- 「畫面上的影片」選單只整理目前畫面已載入且可見的其他影片連結；在 YouTube 捲動或等待內容載入後，清單會重新整理
 - 沒有目標分頁時，先在手機的網址區貼上 HTTPS YouTube 影片網址，Extension 會建立並鎖定新分頁
 
 ### 連接埠或多張網卡問題

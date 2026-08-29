@@ -1,6 +1,6 @@
 import { createApp, nextTick, reactive } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PlayerState } from '@remote-youtube/protocol';
+import type { PlayerState, VideoMenu } from '@remote-youtube/protocol';
 import App from './App.vue';
 
 const mockConnection = vi.hoisted(() => ({
@@ -15,6 +15,7 @@ const mockConnection = vi.hoisted(() => ({
       updatedAtUtc: new Date(0).toISOString(),
     },
     player: null,
+    videoMenu: null as VideoMenu | null,
     errorMessage: null,
   },
   sendCommand: vi.fn(async (command: { commandId: string }) => ({
@@ -76,6 +77,7 @@ function setState(overrides: Record<string, unknown> = {}) {
       updatedAtUtc: new Date(0).toISOString(),
     },
     player: null,
+    videoMenu: null,
     errorMessage: null,
     ...overrides,
   });
@@ -166,6 +168,33 @@ describe('remote control surface', () => {
     );
     expect(mockConnection.sendCommand).toHaveBeenCalledWith(expect.objectContaining({ action: 'toggleCaptions' }));
     expect(mockConnection.sendCommand).toHaveBeenCalledWith(expect.objectContaining({ action: 'toggleFullscreen' }));
+
+    app.unmount();
+  });
+
+  it('renders the captured video menu and navigates only after selection', async () => {
+    setReadyState();
+    const menu: VideoMenu = {
+      protocolVersion: 2,
+      sequence: 1,
+      targetKey: 'tab-1',
+      items: [{ title: '下一部影片', url: 'https://www.youtube.com/watch?v=next' }],
+      capturedAtUtc: new Date().toISOString(),
+    };
+    mockConnection.state.videoMenu = menu;
+    const { app, root } = mountApp();
+
+    expect(root.textContent).toContain('下一部影片');
+    expect(mockConnection.sendCommand).not.toHaveBeenCalled();
+
+    const menuButton = root.querySelector<HTMLButtonElement>('.video-menu-item');
+    if (!menuButton) throw new Error('Video menu item not found');
+    menuButton.click();
+    await settle();
+
+    expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'navigate', stringValue: 'https://www.youtube.com/watch?v=next' }),
+    );
 
     app.unmount();
   });

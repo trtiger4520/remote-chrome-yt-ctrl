@@ -126,7 +126,7 @@ app.MapHealthChecks("/health/live");
 app.MapGet("/api/pairing", () =>
     Results.Ok(PairingUrlPrinter.CreateQrCodes(serverOptions.Port, pairing.EnsureToken())));
 app.MapGet("/api/status", (ExtensionRegistry registry) =>
-    Results.Ok(new RemoteSnapshot(registry.GetStatus(), registry.GetState())))
+    Results.Ok(new RemoteSnapshot(registry.GetStatus(), registry.GetState(), registry.GetVideoMenu())))
     .RequireAuthorization();
 app.MapHub<RemoteHub>("/hubs/remote").RequireRateLimiting("hub-negotiate");
 app.MapHub<ExtensionHub>("/hubs/extension").RequireCors("Extension");

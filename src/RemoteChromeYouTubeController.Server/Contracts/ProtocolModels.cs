@@ -48,6 +48,15 @@ public sealed record PlayerState(
     bool CaptionsEnabled,
     DateTimeOffset CapturedAtUtc);
 
+public sealed record VideoMenuItem(string Title, string Url);
+
+public sealed record VideoMenu(
+    int ProtocolVersion,
+    long Sequence,
+    string TargetKey,
+    IReadOnlyList<VideoMenuItem> Items,
+    DateTimeOffset CapturedAtUtc);
+
 public sealed record SystemStatus(
     bool ServerConnected,
     bool ExtensionConnected,
@@ -58,4 +67,4 @@ public sealed record SystemStatus(
 
 public sealed record ExtensionHello(int ProtocolVersion, string ExtensionVersion);
 
-public sealed record RemoteSnapshot(SystemStatus Status, PlayerState? State);
+public sealed record RemoteSnapshot(SystemStatus Status, PlayerState? State, VideoMenu? Menu);

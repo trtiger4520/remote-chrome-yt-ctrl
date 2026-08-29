@@ -36,6 +36,18 @@ public sealed class ProtocolFixtureTests
         Assert.True(state.CanSeek);
     }
 
+    [Fact]
+    public void Video_menu_fixture_deserializes_with_video_items()
+    {
+        var fixture = ReadFixture("video-menu.json");
+        var menu = JsonSerializer.Deserialize<VideoMenu>(fixture, jsonOptions);
+
+        Assert.NotNull(menu);
+        Assert.Equal(ProtocolConstants.Version, menu!.ProtocolVersion);
+        Assert.Equal(2, menu.Items.Count);
+        Assert.Equal("https://www.youtube.com/watch?v=next", menu.Items[0].Url);
+    }
+
     private static string ReadFixture(string name) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "protocol-fixtures", name));
 }

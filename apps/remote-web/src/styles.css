@@ -819,6 +819,137 @@ h1 {
   color: rgba(255, 255, 255, 0.82);
 }
 
+.remote-shell .video-menu-module {
+  grid-column: 1 / -1;
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.remote-shell .video-menu-heading {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.remote-shell .video-menu-heading span {
+  color: var(--remote-subtle);
+  font-size: 0.61rem;
+}
+
+.remote-shell .video-menu-count {
+  display: grid;
+  place-items: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.55rem;
+  border: 1px solid rgba(10, 132, 255, 0.38);
+  border-radius: 0.8rem;
+  color: #b9ddff;
+  background: rgba(10, 132, 255, 0.14);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.remote-shell .video-menu-summary {
+  margin: 0.52rem 0 0;
+  color: var(--remote-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.remote-shell .video-menu-list {
+  display: grid;
+  gap: 0.45rem;
+  max-height: min(28rem, 48vh);
+  margin: 0.85rem 0 0;
+  padding: 0 0.2rem 0.1rem 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-color: rgba(255, 255, 255, 0.32) transparent;
+  scrollbar-width: thin;
+}
+
+.remote-shell .video-menu-list li {
+  min-width: 0;
+}
+
+.remote-shell .video-menu-item {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid var(--remote-line-soft);
+  border-radius: 1rem;
+  color: var(--remote-text);
+  background: rgba(255, 255, 255, 0.07);
+  text-align: left;
+}
+
+.remote-shell .video-menu-item:not(:disabled):hover {
+  border-color: rgba(10, 132, 255, 0.55);
+  background: rgba(10, 132, 255, 0.14);
+}
+
+.remote-shell .video-menu-index {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.62rem;
+  color: var(--remote-blue);
+  background: rgba(10, 132, 255, 0.14);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.remote-shell .video-menu-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.remote-shell .video-menu-copy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.remote-shell .video-menu-copy small {
+  overflow: hidden;
+  color: var(--remote-subtle);
+  font-size: 0.59rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remote-shell .video-menu-chevron {
+  flex: 0 0 auto;
+  color: var(--remote-muted);
+  transform: rotate(-90deg);
+}
+
+.remote-shell .video-menu-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  padding: 0.85rem 0.8rem;
+  border: 1px dashed var(--remote-line-soft);
+  border-radius: 1rem;
+  color: var(--remote-subtle);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 .remote-shell .rate-panel {
   grid-column: 1 / -1;
   padding: 1rem 1.1rem 1.1rem;

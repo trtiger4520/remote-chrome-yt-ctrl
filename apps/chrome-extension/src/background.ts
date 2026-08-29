@@ -4,10 +4,12 @@ import {
   commandResultSchema,
   extensionHelloSchema,
   playerStateSchema,
+  videoMenuSchema,
   PROTOCOL_VERSION,
   type CommandRequest,
   type CommandResult,
   type PlayerState,
+  type VideoMenu,
 } from '@remote-youtube/protocol';
 import { v7 as uuidv7 } from 'uuid';
 import { isSupportedYouTubeUrl, normalizeYouTubeUrl } from './targeting.js';
@@ -104,8 +106,6 @@ async function executeCommand(rawCommand: unknown): Promise<CommandResult> {
     };
   }
 
-  if (command.action === 'toggleFullscreen') return toggleFullscreen(command, tab);
-
   try {
     const result = await chrome.tabs.sendMessage(tab.id, { type: 'executeCommand', command });
     const parsedResult = commandResultSchema.safeParse(result);
@@ -125,25 +125,6 @@ async function executeCommand(rawCommand: unknown): Promise<CommandResult> {
       status: 'rejected',
       errorCode: 'video_missing',
       message: 'The YouTube video is not ready',
-    };
-  }
-}
-
-async function toggleFullscreen(command: CommandRequest, tab: chrome.tabs.Tab): Promise<CommandResult> {
-  try {
-    const targetWindow = await chrome.windows.get(tab.windowId);
-    await chrome.windows.update(tab.windowId, {
-      state: targetWindow.state === 'fullscreen' ? 'normal' : 'fullscreen',
-    });
-    await refreshTarget(tab);
-    return { commandId: command.commandId, success: true, status: 'completed' };
-  } catch {
-    return {
-      commandId: command.commandId,
-      success: false,
-      status: 'rejected',
-      errorCode: 'internal_error',
-      message: 'Unable to change the Chrome window fullscreen state',
     };
   }
 }
@@ -178,23 +159,50 @@ async function navigate(command: CommandRequest): Promise<CommandResult> {
   }
 }
 
-async function normalizeState(rawState: unknown, tabId: number, windowId: number): Promise<PlayerState | null> {
+async function normalizeState(rawState: unknown, tabId: number): Promise<PlayerState | null> {
   const parsed = playerStateSchema.safeParse(rawState);
   if (!parsed.success) return null;
-  const targetWindow = await chrome.windows.get(windowId).catch(() => null);
   const normalized = playerStateSchema.safeParse({
     ...parsed.data,
     targetKey: `${tabId}:${parsed.data.targetKey}`,
-    isFullscreen: targetWindow?.state === 'fullscreen',
   });
   return normalized.success ? normalized.data : null;
 }
 
-async function publishState(rawState: unknown, tabId: number, windowId: number): Promise<void> {
+function normalizeVideoMenu(rawMenu: unknown, tabId: number): VideoMenu | null {
+  const parsed = videoMenuSchema.safeParse(rawMenu);
+  if (!parsed.success) return null;
+
+  const normalized = videoMenuSchema.safeParse({
+    ...parsed.data,
+    targetKey: `${tabId}:${parsed.data.targetKey}`,
+  });
+  return normalized.success ? normalized.data : null;
+}
+
+async function publishState(rawState: unknown, tabId: number): Promise<void> {
   if (!connection || connection.state !== HubConnectionState.Connected) return;
-  const state = await normalizeState(rawState, tabId, windowId);
+  const state = await normalizeState(rawState, tabId);
   if (state) await connection.invoke('PublishState', state).catch(() => undefined);
   else await connection.invoke('ClearState').catch(() => undefined);
+}
+
+async function publishVideoMenu(rawMenu: unknown, tabId: number): Promise<void> {
+  if (
+    !connection ||
+    connection.state !== HubConnectionState.Connected ||
+    (targetTabId !== null && targetTabId !== tabId)
+  ) {
+    return;
+  }
+
+  if (rawMenu === null) {
+    await connection.invoke('ClearVideoMenu').catch(() => undefined);
+    return;
+  }
+
+  const menu = normalizeVideoMenu(rawMenu, tabId);
+  if (menu) await connection.invoke('PublishVideoMenu', menu).catch(() => undefined);
 }
 
 async function refreshTarget(tab: chrome.tabs.Tab | null): Promise<void> {
@@ -205,7 +213,9 @@ async function refreshTarget(tab: chrome.tabs.Tab | null): Promise<void> {
   }
 
   const state = await chrome.tabs.sendMessage(tab.id, { type: 'requestState' }).catch(() => null);
-  await publishState(state, tab.id, tab.windowId);
+  await publishState(state, tab.id);
+  const menu = await chrome.tabs.sendMessage(tab.id, { type: 'requestVideoMenu' }).catch(() => null);
+  await publishVideoMenu(menu, tab.id);
 }
 
 function attachHandlers(): void {
@@ -298,11 +308,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   if (!message || typeof message !== 'object' || !('type' in message)) return;
-  const typed = message as { type: string; state?: unknown };
+  const typed = message as { type: string; state?: unknown; menu?: unknown };
   if (typed.type === 'playerState' && sender.tab?.id !== undefined) {
     const tabId = sender.tab.id;
     if (targetTabId === null || targetTabId === tabId) {
-      void saveTarget(tabId).then(() => publishState(typed.state, tabId, sender.tab!.windowId));
+      void saveTarget(tabId).then(() => publishState(typed.state, tabId));
+    }
+  }
+  if (typed.type === 'videoMenu' && sender.tab?.id !== undefined && 'menu' in typed) {
+    const tabId = sender.tab.id;
+    if (targetTabId === null && typed.menu !== null && typed.menu !== undefined) {
+      void saveTarget(tabId).then(() => publishVideoMenu(typed.menu, tabId));
+    } else {
+      void publishVideoMenu(typed.menu, tabId);
     }
   }
 });

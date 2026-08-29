@@ -58,6 +58,18 @@ const phaseLabel = computed(
 const phaseClass = computed(() => `phase-${remote.state.phase}`);
 const videoTitle = computed(() => player.value?.title || remote.state.status.targetTitle || '等待 YouTube 影片');
 const videoUrl = computed(() => player.value?.url || '請在 Chrome 開啟 YouTube 影片');
+const videoMenuItems = computed(() => {
+  const menu = remote.state.videoMenu;
+  if (!menu || !player.value || menu.targetKey !== player.value.targetKey) return [];
+  return menu.items;
+});
+const canNavigate = computed(() => remote.state.phase === 'connected' && remote.state.status.extensionConnected);
+const videoMenuSummary = computed(() => {
+  if (!remote.state.status.extensionConnected) return '等待 Extension 回報目前 YouTube 畫面';
+  if (!player.value) return '請在 Chrome 開啟 YouTube 影片';
+  if (videoMenuItems.value.length === 0) return '目前畫面沒有其他已載入的影片連結';
+  return `已找到 ${videoMenuItems.value.length} 部影片，點選後才會切換`;
+});
 const playbackLabel = computed(() => {
   if (!player.value) return '等待影片';
   if (player.value.isLive) return '直播中';
@@ -127,6 +139,15 @@ function formatRate(rate: number): string {
   return Number.isInteger(rate) ? `${rate}` : rate.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
+function formatVideoUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
 async function runCommand(
   action: Parameters<typeof createCommand>[0],
   values: Record<string, unknown> = {},
@@ -174,6 +195,11 @@ function selectRate(rate: number) {
 function submitNavigation() {
   const url = urlDraft.value.trim();
   if (!url) return;
+  void runCommand('navigate', { stringValue: url });
+}
+
+function selectVideo(url: string) {
+  if (!canNavigate.value) return;
   void runCommand('navigate', { stringValue: url });
 }
 
@@ -259,6 +285,10 @@ onBeforeUnmount(() => {
         <rect x="3.5" y="6" width="13" height="12" rx="3"></rect>
         <path d="m16.5 10 4-2v8l-4-2"></path>
         <path d="m9.5 10 3 2-3 2z" fill="currentColor" stroke="none"></path>
+      </symbol>
+      <symbol id="icon-list" viewBox="0 0 24 24">
+        <path d="M8 6h12M8 12h12M8 18h12"></path>
+        <path d="M4 6h.01M4 12h.01M4 18h.01"></path>
       </symbol>
       <symbol id="icon-play" viewBox="0 0 24 24">
         <path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"></path>
@@ -527,6 +557,43 @@ onBeforeUnmount(() => {
             <span class="quick-title">全螢幕</span>
             <span class="quick-value">{{ player?.isFullscreen ? '已開啟' : '關閉' }}</span>
           </button>
+        </section>
+
+        <section class="glass-module video-menu-module" aria-labelledby="video-menu-title">
+          <div class="module-heading-line">
+            <div class="video-menu-heading">
+              <h2 id="video-menu-title">畫面上的影片</h2>
+              <span>手動選擇下一部</span>
+            </div>
+            <span class="video-menu-count" :aria-label="`${videoMenuItems.length} 部影片`">{{
+              videoMenuItems.length
+            }}</span>
+          </div>
+          <p class="video-menu-summary">{{ videoMenuSummary }}</p>
+          <ol v-if="videoMenuItems.length > 0" class="video-menu-list">
+            <li v-for="(item, index) in videoMenuItems" :key="item.url">
+              <button
+                class="video-menu-item"
+                type="button"
+                :disabled="!canNavigate"
+                :title="item.title"
+                @click="selectVideo(item.url)"
+              >
+                <span class="video-menu-index" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="video-menu-copy">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ formatVideoUrl(item.url) }}</small>
+                </span>
+                <svg class="control-icon tiny-icon video-menu-chevron" aria-hidden="true">
+                  <use href="#icon-chevron"></use>
+                </svg>
+              </button>
+            </li>
+          </ol>
+          <div v-else class="video-menu-empty" role="status">
+            <svg class="control-icon tiny-icon" aria-hidden="true"><use href="#icon-list"></use></svg>
+            <span>目前沒有可選的其他影片，請在 YouTube 捲動或等待內容載入</span>
+          </div>
         </section>
 
         <Transition name="panel-reveal">

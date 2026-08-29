@@ -9,6 +9,7 @@ public sealed class ExtensionRegistry
     private int protocolVersion;
     private string? extensionVersion;
     private PlayerState? state;
+    private VideoMenu? menu;
 
     public bool Register(string id, ExtensionHello hello)
     {
@@ -18,6 +19,7 @@ public sealed class ExtensionRegistry
             protocolVersion = hello.ProtocolVersion;
             extensionVersion = hello.ExtensionVersion;
             state = null;
+            menu = null;
             return hello.ProtocolVersion == ProtocolConstants.Version;
         }
     }
@@ -75,21 +77,58 @@ public sealed class ExtensionRegistry
             if (string.Equals(connectionId, id, StringComparison.Ordinal))
             {
                 state = null;
+                menu = null;
             }
         }
     }
 
-    public void Disconnect(string id)
+    public bool UpdateVideoMenu(string id, VideoMenu nextMenu)
+    {
+        lock (sync)
+        {
+            if (!string.Equals(connectionId, id, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (menu is not null &&
+                string.Equals(menu.TargetKey, nextMenu.TargetKey, StringComparison.Ordinal) &&
+                nextMenu.Sequence <= menu.Sequence)
+            {
+                return false;
+            }
+
+            menu = nextMenu;
+            return true;
+        }
+    }
+
+    public void ClearVideoMenu(string id)
     {
         lock (sync)
         {
             if (string.Equals(connectionId, id, StringComparison.Ordinal))
             {
-                connectionId = null;
-                protocolVersion = 0;
-                extensionVersion = null;
-                state = null;
+                menu = null;
             }
+        }
+    }
+
+    public bool Disconnect(string id)
+    {
+        lock (sync)
+        {
+            if (!string.Equals(connectionId, id, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            connectionId = null;
+            protocolVersion = 0;
+            extensionVersion = null;
+            state = null;
+            menu = null;
+            return true;
         }
     }
 
@@ -98,6 +137,14 @@ public sealed class ExtensionRegistry
         lock (sync)
         {
             return state;
+        }
+    }
+
+    public VideoMenu? GetVideoMenu()
+    {
+        lock (sync)
+        {
+            return menu;
         }
     }
 

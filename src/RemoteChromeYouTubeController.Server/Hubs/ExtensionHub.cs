@@ -23,18 +23,19 @@ public sealed class ExtensionHub(
         return base.OnConnectedAsync();
     }
 
-    public Task<CommandResult> RegisterExtension(ExtensionHello hello)
+    public async Task<CommandResult> RegisterExtension(ExtensionHello hello)
     {
         if (!IsLoopback())
         {
-            return Task.FromResult(CommandResult.Rejected(Guid.Empty, "invalid_command", "Extension must connect from loopback"));
+            return CommandResult.Rejected(Guid.Empty, "invalid_command", "Extension must connect from loopback");
         }
 
         var compatible = registry.Register(Context.ConnectionId, hello);
-        _ = BroadcastStatusAsync();
-        return Task.FromResult(compatible
+        await BroadcastStatusAsync();
+        await BroadcastVideoMenuAsync(null);
+        return compatible
             ? CommandResult.Completed(Guid.Empty, "Extension registered")
-            : CommandResult.Rejected(Guid.Empty, "protocol_mismatch", "Unsupported protocol version"));
+            : CommandResult.Rejected(Guid.Empty, "protocol_mismatch", "Unsupported protocol version");
     }
 
     public Task PublishState(PlayerState state)
@@ -48,24 +49,50 @@ public sealed class ExtensionHub(
         return BroadcastStateAsync(state);
     }
 
-    public Task ClearState()
+    public Task PublishVideoMenu(VideoMenu? menu)
+    {
+        if (menu is null || !registry.IsCurrent(Context.ConnectionId) || !VideoMenuValidator.IsValid(menu) ||
+            !registry.UpdateVideoMenu(Context.ConnectionId, menu))
+        {
+            return Task.CompletedTask;
+        }
+
+        return BroadcastVideoMenuAsync(menu);
+    }
+
+    public async Task ClearState()
+    {
+        if (!registry.IsCurrent(Context.ConnectionId))
+        {
+            return;
+        }
+
+        registry.ClearState(Context.ConnectionId);
+        await BroadcastVideoMenuAsync(null);
+        await BroadcastStatusAsync();
+    }
+
+    public Task ClearVideoMenu()
     {
         if (!registry.IsCurrent(Context.ConnectionId))
         {
             return Task.CompletedTask;
         }
 
-        registry.ClearState(Context.ConnectionId);
-        return BroadcastStatusAsync();
+        registry.ClearVideoMenu(Context.ConnectionId);
+        return BroadcastVideoMenuAsync(null);
     }
 
     public Task Heartbeat() => Task.CompletedTask;
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        registry.Disconnect(Context.ConnectionId);
-        await remoteHub.Clients.All.ExtensionOffline();
-        await BroadcastStatusAsync();
+        if (registry.Disconnect(Context.ConnectionId))
+        {
+            await remoteHub.Clients.All.ExtensionOffline();
+            await BroadcastVideoMenuAsync(null);
+            await BroadcastStatusAsync();
+        }
         await base.OnDisconnectedAsync(exception);
     }
 
@@ -80,6 +107,8 @@ public sealed class ExtensionHub(
         await remoteHub.Clients.All.PlayerState(state);
         await BroadcastStatusAsync();
     }
+
+    private Task BroadcastVideoMenuAsync(VideoMenu? menu) => remoteHub.Clients.All.VideoMenuUpdated(menu);
 
     private Task BroadcastStatusAsync() => remoteHub.Clients.All.SystemStatus(registry.GetStatus());
 }
