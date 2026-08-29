@@ -2,49 +2,46 @@
 
 ## 已選定方向
 
-本版採用 impeccable concept seed `7cca67cc` 的「暗房／琥珀安全燈」方向。介面把播放視為一個需要穩定讀數與明確操作的工作面，而不是資訊儀表板
+本版採用使用者指定的 iOS 26 控制中心語彙，將 YouTube Remote 重塑為手機優先的 Liquid Glass 操作面板。視覺參考材質與模組關係，但不複製 Apple 控制中心或加入沒有實際功能的控制
 
-- 基底色：石墨黑與暖灰，降低夜間使用時的視覺噪音
-- 強調色：琥珀色，只用於連線狀態、目前進度與主要播放操作
-- 讀數：等寬數字用於時間、音量與倍速，協助快速掃讀
-- 進度：以曝光條與刻度取代裝飾性圖表
-- 語氣：短句、動詞優先，錯誤訊息直接說明下一個可恢復動作
+- 基底色：近黑色環境光與深藍灰，適合夜間私人 LAN 遙控情境
+- 材質：半透明磨砂玻璃、柔和高光邊緣、有限度陰影與 CSS 環境光
+- 語意色：藍色代表播放與主要操作，綠色代表連線，黃色代表等待與倍速，珊瑚色代表錯誤與靜音
+- 圖示：App 內嵌 SVG sprite，維持一致的線條粗細與幾何語彙
+- 讀數：系統 sans-serif 搭配 tabular numbers，用於時間、音量與倍速等快速掃讀資訊
 
 ## 版面契約
 
 第一個手機 viewport 依序呈現：
 
-1. 頂端品牌與連線狀態
-2. 目前影片標題、目標狀態與網址
-3. 大型進度條與目前／總時間
-4. 拇指可及區的後退、播放、前進
-5. 音量、靜音、倍速、全螢幕與字幕等次要控制
-6. 折疊式 YouTube URL 輸入
+1. YouTube Remote 與連線狀態膠囊
+2. Server、Extension、YouTube 三層連線模組
+3. 目前影片、目標狀態、網址與播放狀態
+4. 影片進度、目前時間與總時間
+5. 大型倒退、播放／暫停、前進控制
+6. 音量與靜音、倍速、字幕、全螢幕快速控制
+7. 折疊式 YouTube URL 輸入
 
-主要控制目標至少 44×44 CSS px。控制在 Extension 離線、無目標或影片尚未 ready 時維持 disabled，而不是讓點擊沒有回饋。`aria-live` 只用於連線與錯誤，不播報每次 timeupdate
+控制中心使用四欄 responsive grid。320px 以上維持雙欄上層模組，360×800 與 390×844 必須在首屏看見主要播放控制，桌面版維持最大約 760px 置中寬度
 
 ## 狀態與動效
 
-- 未配對：保留清楚的 QR 引導與重新檢查按鈕
-- 連線中／重新連線：保留最後一份 player state，停用控制
-- Extension offline：顯示安裝與啟用提示
-- 無目標：只保留可用的網址輸入
-- loading：顯示目標已找到但影片 metadata 尚未完成
-- ready：顯示完整控制面板
-- live：隱藏進度拖曳，保留播放、音量、靜音、倍速、全螢幕與字幕
-- command error：顯示可消失的錯誤列，不重置整個連線
+- 未配對：使用置中的玻璃引導卡，保留 `/connect` 說明與重新檢查
+- 連線中／重新連線：保留最後播放器資料，停用控制並讓連線指示低頻脈動
+- Extension offline、無 target、loading、unsupported：在連線模組與狀態列清楚說明下一步
+- ready：啟用完整控制面板，toggle 的 active 樣式以遠端回傳狀態為準
+- live 或 `canSeek=false`：停用進度與前後 seek，保留播放、音量、倍速、全螢幕與字幕
+- command error：顯示五秒可消失的錯誤列，不重置整個連線
 
-不使用裝飾性頁面載入動畫。`prefers-reduced-motion` 會關閉 transition 與平滑捲動，鍵盤 focus 使用高對比琥珀外框
+按下控制時使用約 160ms 的縮放回饋與約 220ms 的回彈，狀態切換使用短促的背景與邊緣轉換。`prefers-reduced-motion` 會關閉位移、縮放與脈動，`aria-live` 僅用於連線與錯誤，不播報每次 timeupdate
 
-## 視覺稿與實作對照
+## 內容與邊界
 
-實作前比較了三個直向手機構圖：
-
-- A／印刷台：標題與進度讀數最大，控制集中在下半部
-- B／暗房工作台：狀態 rail、曝光條與 transport controls 形成單一垂直操作路徑
-- C／剪輯台：設定卡片較多，適合低頻調整
-
-選定 B，因為它最符合單手高頻操作與錯誤狀態可見性的要求。`apps/remote-web/src/App.vue` 的首個 template comment 保留 thesis、own-world、story、first viewport、form 與 finish line，作為後續 UI 修改的約束
+- 影片標題沿用協定允許的最多 500 字元並限制視覺行數，完整內容保留於 title
+- 影片 URL 沿用協定的 URL 驗證與省略顯示，不產生縮圖 placeholder，因為 PlayerState 沒有縮圖資料
+- 不修改 PlayerState、SystemStatus、CommandRequest、SignalR Hub、Server 或 Extension
+- `/connect` 配對頁與其既有工作樹修改維持原樣
+- 第一版維持私人 LAN HTTP，介面不暗示公開網路部署或額外安全能力
 
 ## 可追溯性
 

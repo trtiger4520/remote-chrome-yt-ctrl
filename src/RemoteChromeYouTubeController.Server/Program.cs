@@ -71,7 +71,6 @@ builder.Services.AddSignalR(options =>
 var app = builder.Build();
 var pairing = app.Services.GetRequiredService<PairingTokenService>();
 var resetPairing = args.Any(argument => string.Equals(argument, "--reset-pairing", StringComparison.OrdinalIgnoreCase));
-var showPairing = args.Any(argument => string.Equals(argument, "--show-pairing", StringComparison.OrdinalIgnoreCase));
 pairing.EnsureToken(resetPairing);
 
 if (app.Environment.IsDevelopment())
@@ -124,6 +123,8 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapHealthChecks("/health/live");
+app.MapGet("/api/pairing", () =>
+    Results.Ok(PairingUrlPrinter.CreateQrCodes(serverOptions.Port, pairing.EnsureToken())));
 app.MapGet("/api/status", (ExtensionRegistry registry) =>
     Results.Ok(new RemoteSnapshot(registry.GetStatus(), registry.GetState())))
     .RequireAuthorization();
@@ -133,7 +134,7 @@ app.MapFallbackToFile("index.html");
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {
-    PairingUrlPrinter.Print(pairing, serverOptions.Port, showPairing);
+    PairingUrlPrinter.Print(pairing, serverOptions.Port);
     ServerLog.ServerStarted(app.Logger, serverOptions.Port);
 });
 

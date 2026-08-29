@@ -8,26 +8,23 @@ namespace RemoteChromeYouTubeController.Server.Services;
 
 public static class PairingUrlPrinter
 {
-    public static void Print(PairingTokenService pairing, int port, bool showPairing)
+    public static void Print(PairingTokenService pairing, int port)
     {
-        var urls = GetPrivateUrls(port, pairing.EnsureToken()).ToArray();
         Console.WriteLine();
-        Console.WriteLine("YouTube Remote pairing");
-        Console.WriteLine("Scan one of these URLs from a phone on the same private LAN:");
-        foreach (var url in urls)
-        {
-            Console.WriteLine($"  {url}");
-            PrintQr(url);
-        }
-
+        Console.WriteLine("YouTube Remote pairing is available at:");
+        Console.WriteLine($"  http://localhost:{port}/connect");
+        Console.WriteLine("Open this page on the Server computer and scan its QR Code from a phone on the same private LAN");
         Console.WriteLine($"Token file: {pairing.TokenPath}");
-        Console.WriteLine(showPairing
-            ? "Pairing QR printed by --show-pairing"
-            : "Use --show-pairing to explicitly reprint pairing details, or --reset-pairing to rotate the token");
+        Console.WriteLine("Use --reset-pairing to rotate the token");
         Console.WriteLine();
     }
 
-    private static IEnumerable<string> GetPrivateUrls(int port, string token)
+    public static IReadOnlyList<PairingQrCode> CreateQrCodes(int port, string token) =>
+        GetPrivateUrls(port, token)
+            .Select(url => new PairingQrCode(url, CreateQrCodeDataUrl(url)))
+            .ToArray();
+
+    private static string[] GetPrivateUrls(int port, string token)
     {
         var addresses = NetworkInterface.GetAllNetworkInterfaces()
             .Where(network => network.OperationalStatus == OperationalStatus.Up)
@@ -36,17 +33,17 @@ public static class PairingUrlPrinter
             .Where(address => address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address))
             .Where(IsPrivate)
             .Distinct()
-            .OrderBy(address => address.ToString(), StringComparer.Ordinal);
+            .OrderBy(address => address.ToString(), StringComparer.Ordinal)
+            .ToArray();
 
-        foreach (var address in addresses)
+        if (addresses.Length == 0)
         {
-            yield return $"http://{address}:{port}/#token={Uri.EscapeDataString(token)}";
+            return [$"http://127.0.0.1:{port}/#token={Uri.EscapeDataString(token)}"];
         }
 
-        if (!addresses.Any())
-        {
-            yield return $"http://127.0.0.1:{port}/#token={Uri.EscapeDataString(token)}";
-        }
+        return addresses
+            .Select(address => $"http://{address}:{port}/#token={Uri.EscapeDataString(token)}")
+            .ToArray();
     }
 
     private static bool IsPrivate(IPAddress address)
@@ -57,11 +54,13 @@ public static class PairingUrlPrinter
                bytes[0] == 192 && bytes[1] == 168;
     }
 
-    private static void PrintQr(string url)
+    private static string CreateQrCodeDataUrl(string url)
     {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-        var ascii = new AsciiQRCode(data).GetGraphic(1);
-        Console.WriteLine(ascii);
+        var svg = new SvgQRCode(data).GetGraphic(10);
+        return $"data:image/svg+xml;base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(svg))}";
     }
 }
+
+public sealed record PairingQrCode(string Url, string ImageUrl);

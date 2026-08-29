@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { createCommand, createRemoteConnection } from './lib/connection';
 import { clearPairingToken, readPairingToken } from './lib/pairing';
 
 const token = readPairingToken();
 const remote = createRemoteConnection(token);
 const seekDraft = ref<number | null>(null);
+const volumeDraft = ref<number | null>(null);
 const urlDraft = ref('');
 const speedMenuOpen = ref(false);
 const now = ref(Date.now());
@@ -25,6 +26,7 @@ const isReady = computed(
     player.value !== null,
 );
 const isLive = computed(() => player.value?.isLive ?? false);
+const canSeek = computed(() => isReady.value && !isLive.value && (player.value?.canSeek ?? false));
 const duration = computed(() => player.value?.duration ?? 0);
 const currentTime = computed(() => {
   if (seekDraft.value !== null) {
@@ -42,6 +44,7 @@ const currentTime = computed(() => {
 const progress = computed(() =>
   duration.value > 0 ? Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100)) : 0,
 );
+const displayedVolume = computed(() => volumeDraft.value ?? player.value?.volume ?? 0);
 const phaseLabel = computed(
   () =>
     ({
@@ -53,6 +56,61 @@ const phaseLabel = computed(
     })[remote.state.phase],
 );
 const phaseClass = computed(() => `phase-${remote.state.phase}`);
+const videoTitle = computed(() => player.value?.title || remote.state.status.targetTitle || '等待 YouTube 影片');
+const videoUrl = computed(() => player.value?.url || '請在 Chrome 開啟 YouTube 影片');
+const playbackLabel = computed(() => {
+  if (!player.value) return '等待影片';
+  if (player.value.isLive) return '直播中';
+  return player.value.paused ? '已暫停' : '播放中';
+});
+const targetStateLabel = computed(() => {
+  if (remote.state.status.targetStatus === 'ready') return isLive.value ? '直播' : '已就緒';
+  return (
+    {
+      none: '未找到',
+      loading: '載入中',
+      unsupported: '不支援',
+    }[remote.state.status.targetStatus] ?? '等待中'
+  );
+});
+const targetStateTone = computed(() => {
+  if (remote.state.status.targetStatus === 'ready') return 'on';
+  if (remote.state.status.targetStatus === 'loading') return 'pending';
+  if (remote.state.status.targetStatus === 'unsupported') return 'error';
+  return 'off';
+});
+const connectionHeadline = computed(() => {
+  if (isReady.value) return '控制中心已就緒';
+  if (!remote.state.status.extensionConnected) return '等待 Chrome Extension';
+  if (remote.state.status.targetStatus === 'loading') return '等待影片載入';
+  if (remote.state.status.targetStatus === 'none') return '請開啟 YouTube 分頁';
+  if (remote.state.status.targetStatus === 'unsupported') return '目前分頁不支援控制';
+  return '正在同步播放狀態';
+});
+const connectionItems = computed(() => {
+  const pending = remote.state.phase === 'connecting' || remote.state.phase === 'reconnecting';
+  const serverTone =
+    remote.state.phase === 'error' ? 'error' : remote.state.status.serverConnected ? 'on' : pending ? 'pending' : 'off';
+  const extensionTone = remote.state.status.extensionConnected ? 'on' : pending ? 'pending' : 'off';
+
+  return [
+    {
+      label: 'Server',
+      value: remote.state.status.serverConnected ? '已連線' : pending ? '連線中' : '離線',
+      tone: serverTone,
+    },
+    {
+      label: 'Extension',
+      value: remote.state.status.extensionConnected ? '已連線' : pending ? '等待中' : '離線',
+      tone: extensionTone,
+    },
+    {
+      label: 'YouTube',
+      value: targetStateLabel.value,
+      tone: targetStateTone.value,
+    },
+  ];
+});
 
 function formatTime(value: number): string {
   if (!Number.isFinite(value)) return '--:--';
@@ -65,13 +123,22 @@ function formatTime(value: number): string {
   return hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
 }
 
-async function runCommand(action: Parameters<typeof createCommand>[0], values: Record<string, unknown> = {}) {
+function formatRate(rate: number): string {
+  return Number.isInteger(rate) ? `${rate}` : rate.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+async function runCommand(
+  action: Parameters<typeof createCommand>[0],
+  values: Record<string, unknown> = {},
+): Promise<boolean> {
   try {
     const result = await remote.sendCommand(createCommand(action, values));
     if (!result.success) scheduleCommandErrorClear();
+    return result.success;
   } catch (error) {
     remote.state.errorMessage = error instanceof Error ? error.message : '操作未完成';
     scheduleCommandErrorClear();
+    return false;
   }
 }
 
@@ -93,7 +160,7 @@ function updateSeek(event: Event) {
 }
 
 function commitSeek() {
-  if (seekDraft.value === null || isLive.value) return;
+  if (seekDraft.value === null || !canSeek.value) return;
   const value = seekDraft.value;
   seekDraft.value = null;
   void runCommand('seekTo', { numberValue: value });
@@ -110,18 +177,21 @@ function submitNavigation() {
   void runCommand('navigate', { stringValue: url });
 }
 
-function flushVolume() {
+async function flushVolume() {
   volumeTimer = undefined;
   if (pendingVolume === null) return;
   const value = pendingVolume;
   pendingVolume = null;
-  void runCommand('setVolume', { numberValue: value });
+  const success = await runCommand('setVolume', { numberValue: value });
+  if (!success) volumeDraft.value = null;
 }
 
 function setVolumeFromEvent(event: Event) {
-  pendingVolume = Number((event.target as HTMLInputElement).value);
+  const value = Number((event.target as HTMLInputElement).value);
+  volumeDraft.value = value;
+  pendingVolume = value;
   if (volumeTimer === undefined) {
-    volumeTimer = window.setTimeout(flushVolume, 100);
+    volumeTimer = window.setTimeout(() => void flushVolume(), 100);
   }
 }
 
@@ -130,7 +200,7 @@ function commitVolume() {
     window.clearTimeout(volumeTimer);
     volumeTimer = undefined;
   }
-  flushVolume();
+  void flushVolume();
 }
 
 function reloadPage() {
@@ -142,6 +212,23 @@ function resetPairing() {
   window.location.reload();
 }
 
+watch(
+  () => player.value?.targetKey,
+  () => {
+    seekDraft.value = null;
+    volumeDraft.value = null;
+  },
+);
+
+watch(
+  () => player.value?.volume,
+  (volume) => {
+    if (volumeDraft.value !== null && volume !== undefined && Math.abs(volume - volumeDraft.value) < 0.005) {
+      volumeDraft.value = null;
+    }
+  },
+);
+
 onBeforeUnmount(() => {
   window.clearInterval(timer);
   if (volumeTimer !== undefined) window.clearTimeout(volumeTimer);
@@ -151,229 +238,390 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- THESIS: a darkroom control surface turns live playback into a clear, tactile operating task and refuses dashboard clutter. OWN-WORLD: graphite, amber safelight, silver timing marks, and exposure-strip progress. STORY: pair once, see the active print, then make one-handed transport decisions. FIRST VIEWPORT: connection rail, current title, exposure-strip scrubber, and three transport controls occupy the thumb zone; settings recede below. FORM: assigned darkroom direction, seed 7cca67cc. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md -->
-  <main class="remote-shell">
-    <header class="top-rail">
-      <div class="brand-lockup">
-        <span class="brand-mark" aria-hidden="true">YR</span>
+  <!-- THESIS: a Liquid Glass control center turns remote playback into a calm, glanceable operating surface and refuses dashboard clutter. OWN-WORLD: near-black ambient light, translucent silver glass, semantic blue/green/yellow/coral controls, and authored SVG geometry. STORY: confirm the LAN path, identify the current video, then make one-handed transport decisions. FIRST VIEWPORT: connection and media modules lead into the scrubber, three transport controls, and volume and quick toggles. FORM: user-pinned iOS 26 Control Center composition, adapted for YouTube Remote. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md -->
+  <main class="remote-shell" aria-label="YouTube Remote 控制中心">
+    <svg class="icon-defs" aria-hidden="true" focusable="false">
+      <symbol id="icon-remote" viewBox="0 0 24 24">
+        <rect x="5" y="3.5" width="14" height="17" rx="4"></rect>
+        <path d="M9 7.5h6M9 16.5h6"></path>
+        <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle>
+      </symbol>
+      <symbol id="icon-link" viewBox="0 0 24 24">
+        <path d="m9.5 14.5 5-5"></path>
+        <path d="M7.4 17.8H6.2a4 4 0 0 1 0-8h3.1M16.6 6.2h1.2a4 4 0 0 1 0 8h-3.1"></path>
+      </symbol>
+      <symbol id="icon-server" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="16" height="6" rx="2"></rect>
+        <rect x="4" y="14" width="16" height="6" rx="2"></rect>
+        <path d="M8 7h.01M8 17h.01M12 7h5M12 17h5"></path>
+      </symbol>
+      <symbol id="icon-video" viewBox="0 0 24 24">
+        <rect x="3.5" y="6" width="13" height="12" rx="3"></rect>
+        <path d="m16.5 10 4-2v8l-4-2"></path>
+        <path d="m9.5 10 3 2-3 2z" fill="currentColor" stroke="none"></path>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="m8 5 11 7-11 7z" fill="currentColor" stroke="none"></path>
+      </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <rect x="7" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"></rect>
+        <rect x="13" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"></rect>
+      </symbol>
+      <symbol id="icon-rewind" viewBox="0 0 24 24">
+        <path d="m4 12 7-6v12zM11 12l7-6v12z" fill="currentColor" stroke="none"></path>
+      </symbol>
+      <symbol id="icon-forward" viewBox="0 0 24 24">
+        <path d="m20 12-7-6v12zM13 12 6 6v12z" fill="currentColor" stroke="none"></path>
+      </symbol>
+      <symbol id="icon-volume" viewBox="0 0 24 24">
+        <path d="M4 10v4h4l5 4V6l-5 4z"></path>
+        <path d="M16 9.5a4 4 0 0 1 0 5M18.5 7a7.5 7.5 0 0 1 0 10"></path>
+      </symbol>
+      <symbol id="icon-mute" viewBox="0 0 24 24">
+        <path d="M4 10v4h4l5 4V6l-5 4z"></path>
+        <path d="m17 9 4 6M21 9l-4 6"></path>
+      </symbol>
+      <symbol id="icon-speed" viewBox="0 0 24 24">
+        <path d="M4.5 15a7.5 7.5 0 1 1 15 0"></path>
+        <path d="m12 12 3.5-3.5M7 18h10"></path>
+      </symbol>
+      <symbol id="icon-captions" viewBox="0 0 24 24">
+        <rect x="3.5" y="6" width="17" height="12" rx="3"></rect>
+        <path d="M7 11h4M13 11h4M7 14h3M12 14h5"></path>
+      </symbol>
+      <symbol id="icon-fullscreen" viewBox="0 0 24 24">
+        <path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"></path>
+      </symbol>
+      <symbol id="icon-chevron" viewBox="0 0 24 24">
+        <path d="m6 9 6 6 6-6"></path>
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M19 8V4l-2.2 2.2A7 7 0 1 0 19 12"></path>
+      </symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24">
+        <path d="M12 4 21 19H3z"></path>
+        <path d="M12 9v4M12 16h.01"></path>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6"></path>
+      </symbol>
+    </svg>
+
+    <header class="remote-topbar">
+      <div class="brand-lockup remote-brand">
+        <span class="brand-mark remote-brand-mark" aria-hidden="true">
+          <svg class="control-icon"><use href="#icon-remote"></use></svg>
+        </span>
         <div>
-          <p class="eyebrow">YouTube Remote</p>
-          <p class="microcopy">LOCAL CONTROL / 5080</p>
+          <p class="brand-name">YouTube Remote</p>
+          <p class="brand-context">PRIVATE LAN / 5080</p>
         </div>
       </div>
       <div class="connection-badge" :class="phaseClass" role="status" aria-live="polite">
         <span class="status-dot" aria-hidden="true"></span>
-        {{ phaseLabel }}
+        <span>{{ phaseLabel }}</span>
       </div>
     </header>
 
-    <section v-if="remote.state.phase === 'unpaired'" class="message-panel" aria-labelledby="pairing-title">
-      <span class="section-index">01 / PAIR</span>
+    <section
+      v-if="remote.state.phase === 'unpaired'"
+      class="remote-empty-state glass-module"
+      aria-labelledby="pairing-title"
+    >
+      <div class="empty-icon" aria-hidden="true">
+        <svg class="control-icon large-icon"><use href="#icon-link"></use></svg>
+      </div>
       <h1 id="pairing-title">等待 Server 配對</h1>
-      <p>請在執行 Server 的主控台掃描 QR Code。配對完成後，這個頁面會自動連線。</p>
-      <button class="secondary-button" type="button" @click="reloadPage">重新檢查</button>
+      <p>
+        請在執行 Server 的電腦開啟 <strong>/connect</strong>，掃描該頁顯示的 QR Code。配對完成後，這個頁面會自動連線。
+      </p>
+      <button class="glass-action primary-action" type="button" @click="reloadPage">重新檢查</button>
     </section>
 
-    <section v-else-if="remote.state.phase === 'error'" class="message-panel" aria-labelledby="error-title">
-      <span class="section-index">01 / PAIRING ERROR</span>
+    <section
+      v-else-if="remote.state.phase === 'error'"
+      class="remote-empty-state glass-module error-state"
+      aria-labelledby="error-title"
+    >
+      <div class="empty-icon error-icon" aria-hidden="true">
+        <svg class="control-icon large-icon"><use href="#icon-alert"></use></svg>
+      </div>
       <h1 id="error-title">需要重新配對</h1>
       <p>{{ remote.state.errorMessage }}</p>
-      <button class="secondary-button" type="button" @click="resetPairing">清除並重新配對</button>
+      <button class="glass-action primary-action" type="button" @click="resetPairing">清除並重新配對</button>
     </section>
 
     <template v-else>
-      <section class="now-playing" aria-labelledby="now-playing-title">
-        <div class="section-heading">
-          <span class="section-index">01 / NOW PLAYING</span>
-          <span class="target-state">{{ remote.state.status.targetStatus.toUpperCase() }}</span>
-        </div>
-        <h1 id="now-playing-title">{{ player?.title || remote.state.status.targetTitle || '等待 YouTube 影片' }}</h1>
-        <p class="target-url">{{ player?.url || '請在 Chrome 開啟 YouTube 影片' }}</p>
-      </section>
+      <section class="control-center-grid" aria-label="播放與連線控制" :aria-busy="remote.state.phase !== 'connected'">
+        <section class="glass-module connection-module" aria-labelledby="connection-module-title">
+          <div class="module-heading-line">
+            <h2 id="connection-module-title">連線狀態</h2>
+            <svg class="control-icon module-icon" aria-hidden="true"><use href="#icon-link"></use></svg>
+          </div>
+          <p class="module-summary">{{ connectionHeadline }}</p>
+          <div class="connection-list">
+            <div v-for="item in connectionItems" :key="item.label" class="connection-row">
+              <span class="status-indicator" :class="`tone-${item.tone}`" aria-hidden="true"></span>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
+        </section>
 
-      <section class="transport-panel" aria-label="播放控制">
-        <div class="exposure-track" :class="{ disabled: isLive || !isReady }">
-          <input
-            class="seek-slider"
-            type="range"
-            min="0"
-            :max="duration || 1"
-            step="0.1"
-            :value="currentTime"
-            :disabled="!isReady || isLive"
-            :aria-label="isLive ? '直播無法調整進度' : '影片進度'"
-            @input="updateSeek"
-            @change="commitSeek"
-          />
-          <div class="exposure-fill" :style="{ width: `${progress}%` }"></div>
-          <div class="exposure-marks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        </div>
-        <div class="time-readout">
-          <span>{{ formatTime(currentTime) }}</span>
-          <span>{{ isLive ? 'LIVE' : formatTime(duration) }}</span>
-        </div>
+        <section class="glass-module now-playing-module" aria-labelledby="now-playing-title">
+          <div class="module-heading-line">
+            <h2 id="now-playing-title">現在播放</h2>
+            <span class="media-state" :class="`tone-${targetStateTone}`">{{ playbackLabel }}</span>
+          </div>
+          <p class="media-title" :title="videoTitle">{{ videoTitle }}</p>
+          <p class="media-url" :title="videoUrl">{{ videoUrl }}</p>
+          <div class="media-meta">
+            <span class="media-provider">
+              <svg class="control-icon tiny-icon" aria-hidden="true"><use href="#icon-video"></use></svg>
+              YouTube
+            </span>
+            <span>{{ formatRate(player?.playbackRate ?? 1) }}×</span>
+          </div>
+        </section>
 
-        <div class="transport-controls">
+        <section class="glass-module progress-module" aria-labelledby="progress-title">
+          <div class="module-heading-line">
+            <h2 id="progress-title">影片進度</h2>
+            <span class="progress-percent">{{ isLive ? 'LIVE' : `${Math.round(progress)}%` }}</span>
+          </div>
+          <div class="seek-control" :class="{ disabled: !canSeek }">
+            <input
+              class="seek-slider"
+              type="range"
+              min="0"
+              :max="duration || 1"
+              step="0.1"
+              :value="isLive ? 0 : currentTime"
+              :style="{ '--range-progress': `${progress}%` }"
+              :disabled="!canSeek"
+              :aria-label="isLive ? '直播無法調整進度' : canSeek ? '影片進度' : '目前無法調整進度'"
+              @input="updateSeek"
+              @change="commitSeek"
+            />
+          </div>
+          <div class="time-readout">
+            <span>{{ formatTime(currentTime) }}</span>
+            <span>{{ isLive ? 'LIVE' : formatTime(duration) }}</span>
+          </div>
+        </section>
+
+        <section class="glass-module transport-module" aria-label="播放控制">
           <button
-            class="transport-button secondary"
+            class="transport-button skip-button"
             type="button"
-            :disabled="!isReady || isLive"
+            :disabled="!canSeek"
             aria-label="倒退十秒"
             @click="runCommand('seekBy', { numberValue: -10 })"
           >
-            <span class="transport-glyph" aria-hidden="true">↶</span><small>10</small>
+            <svg class="control-icon transport-icon" aria-hidden="true"><use href="#icon-rewind"></use></svg>
+            <span class="skip-number">10</span>
           </button>
           <button
-            class="transport-button primary"
+            class="transport-button play-button"
             type="button"
             :disabled="!isReady"
-            :aria-label="player?.paused ? '播放' : '暫停'"
+            :aria-label="player ? (player.paused ? '播放' : '暫停') : '播放'"
             @click="togglePlayback"
           >
-            <span aria-hidden="true">{{ player?.paused ? '▶' : 'Ⅱ' }}</span>
+            <svg v-if="player?.paused" class="control-icon play-icon" aria-hidden="true">
+              <use href="#icon-play"></use>
+            </svg>
+            <svg v-else class="control-icon play-icon" aria-hidden="true"><use href="#icon-pause"></use></svg>
           </button>
           <button
-            class="transport-button secondary"
+            class="transport-button skip-button"
             type="button"
-            :disabled="!isReady || isLive"
+            :disabled="!canSeek"
             aria-label="前進十秒"
             @click="runCommand('seekBy', { numberValue: 10 })"
           >
-            <small>10</small><span class="transport-glyph" aria-hidden="true">↷</span>
+            <span class="skip-number">10</span>
+            <svg class="control-icon transport-icon" aria-hidden="true"><use href="#icon-forward"></use></svg>
           </button>
-        </div>
-      </section>
+        </section>
 
-      <section class="control-grid" aria-label="播放選項">
-        <div class="control-block volume-block">
-          <div class="control-label-row">
-            <span class="section-index">02 / VOLUME</span>
-            <strong>{{ Math.round((player?.volume ?? 0) * 100) }}%</strong>
+        <section class="glass-module volume-module" aria-labelledby="volume-title">
+          <div class="module-heading-line">
+            <h2 id="volume-title">音量</h2>
+            <strong class="volume-value">{{ Math.round(displayedVolume * 100) }}%</strong>
           </div>
-          <div class="volume-row">
-            <button
-              class="icon-button"
-              type="button"
-              :disabled="!isReady"
-              :aria-label="player?.muted ? '取消靜音' : '靜音'"
-              @click="runCommand('setMuted', { booleanValue: !(player?.muted ?? false) })"
-            >
-              {{ player?.muted ? '×' : '◖' }}
-            </button>
+          <div class="volume-control">
+            <svg class="control-icon volume-icon" aria-hidden="true">
+              <use :href="player?.muted ? '#icon-mute' : '#icon-volume'"></use>
+            </svg>
             <input
               class="volume-slider"
               type="range"
               min="0"
               max="1"
               step="0.01"
-              :value="player?.volume ?? 0"
+              :value="displayedVolume"
+              :style="{ '--range-progress': `${displayedVolume * 100}%` }"
               :disabled="!isReady"
               aria-label="音量"
               @input="setVolumeFromEvent"
               @change="commitVolume"
             />
           </div>
-        </div>
-        <div class="control-block rate-block">
-          <div class="control-label-row">
-            <span class="section-index">03 / RATE</span><strong>{{ player?.playbackRate ?? 1 }}×</strong>
-          </div>
-          <div class="rate-picker">
-            <button
-              class="rate-button"
-              type="button"
-              :disabled="!isReady"
-              :aria-expanded="speedMenuOpen"
-              @click="speedMenuOpen = !speedMenuOpen"
-            >
-              {{ player?.playbackRate ?? 1 }}× <span aria-hidden="true">⌄</span>
-            </button>
-            <div v-if="speedMenuOpen" class="rate-menu" role="menu">
+          <span class="module-footnote">拖曳調整播放音量</span>
+        </section>
+
+        <section class="quick-grid" aria-label="快速控制">
+          <button
+            class="quick-control"
+            :class="{ active: player?.muted }"
+            type="button"
+            :disabled="!isReady"
+            :aria-pressed="player?.muted ?? false"
+            aria-label="靜音"
+            @click="runCommand('setMuted', { booleanValue: !(player?.muted ?? false) })"
+          >
+            <svg class="control-icon quick-icon" aria-hidden="true">
+              <use :href="player?.muted ? '#icon-mute' : '#icon-volume'"></use>
+            </svg>
+            <span class="quick-title">靜音</span>
+            <span class="quick-value">{{ player?.muted ? '已開啟' : '關閉' }}</span>
+          </button>
+          <button
+            class="quick-control"
+            :class="{ active: speedMenuOpen || (player?.playbackRate ?? 1) !== 1 }"
+            type="button"
+            :disabled="!isReady"
+            :aria-expanded="speedMenuOpen"
+            aria-controls="rate-panel"
+            aria-label="播放速度"
+            @click="speedMenuOpen = !speedMenuOpen"
+          >
+            <svg class="control-icon quick-icon" aria-hidden="true"><use href="#icon-speed"></use></svg>
+            <span class="quick-title">速度</span>
+            <span class="quick-value">{{ formatRate(player?.playbackRate ?? 1) }}×</span>
+          </button>
+          <button
+            class="quick-control"
+            :class="{ active: player?.captionsEnabled }"
+            type="button"
+            :disabled="!isReady"
+            :aria-pressed="player?.captionsEnabled ?? false"
+            aria-label="字幕"
+            @click="runCommand('toggleCaptions')"
+          >
+            <svg class="control-icon quick-icon" aria-hidden="true"><use href="#icon-captions"></use></svg>
+            <span class="quick-title">字幕</span>
+            <span class="quick-value">{{ player?.captionsEnabled ? '已開啟' : '關閉' }}</span>
+          </button>
+          <button
+            class="quick-control"
+            :class="{ active: player?.isFullscreen }"
+            type="button"
+            :disabled="!isReady"
+            :aria-pressed="player?.isFullscreen ?? false"
+            aria-label="全螢幕"
+            @click="runCommand('toggleFullscreen')"
+          >
+            <svg class="control-icon quick-icon" aria-hidden="true"><use href="#icon-fullscreen"></use></svg>
+            <span class="quick-title">全螢幕</span>
+            <span class="quick-value">{{ player?.isFullscreen ? '已開啟' : '關閉' }}</span>
+          </button>
+        </section>
+
+        <Transition name="panel-reveal">
+          <div
+            v-if="speedMenuOpen"
+            id="rate-panel"
+            class="glass-module rate-panel"
+            role="group"
+            aria-label="播放速度選擇"
+          >
+            <div class="rate-panel-heading">
+              <h2>播放速度</h2>
+              <button class="close-panel-button" type="button" @click="speedMenuOpen = false">
+                關閉
+                <svg class="control-icon tiny-icon" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+              </button>
+            </div>
+            <div class="rate-options">
               <button
                 v-for="rate in [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]"
                 :key="rate"
-                type="button"
-                role="menuitem"
+                class="rate-option"
                 :class="{ selected: player?.playbackRate === rate }"
+                type="button"
+                :aria-pressed="player?.playbackRate === rate"
                 @click="selectRate(rate)"
               >
-                {{ rate }}×
+                <span>{{ formatRate(rate) }}×</span>
+                <svg v-if="player?.playbackRate === rate" class="control-icon tiny-icon" aria-hidden="true">
+                  <use href="#icon-check"></use>
+                </svg>
               </button>
             </div>
           </div>
-        </div>
-        <div class="control-block toggle-block">
-          <div class="control-label-row">
-            <span class="section-index">04 / DISPLAY</span><strong>{{ player?.isFullscreen ? '開啟' : '關閉' }}</strong>
-          </div>
-          <button
-            class="toggle-button"
-            type="button"
-            :class="{ active: player?.isFullscreen }"
-            :disabled="!isReady"
-            :aria-pressed="player?.isFullscreen ?? false"
-            :aria-label="player?.isFullscreen ? '結束全螢幕' : '開啟全螢幕'"
-            @click="runCommand('toggleFullscreen')"
-          >
-            {{ player?.isFullscreen ? '結束全螢幕' : '全螢幕' }}
-          </button>
-        </div>
-        <div class="control-block toggle-block">
-          <div class="control-label-row">
-            <span class="section-index">05 / CAPTIONS</span>
-            <strong>{{ player?.captionsEnabled ? '開啟' : '關閉' }}</strong>
-          </div>
-          <button
-            class="toggle-button"
-            type="button"
-            :class="{ active: player?.captionsEnabled }"
-            :disabled="!isReady"
-            :aria-pressed="player?.captionsEnabled ?? false"
-            :aria-label="player?.captionsEnabled ? '關閉字幕' : '開啟字幕'"
-            @click="runCommand('toggleCaptions')"
-          >
-            {{ player?.captionsEnabled ? '字幕開啟中' : '字幕' }}
-          </button>
-        </div>
+        </Transition>
+
+        <details class="navigation-panel glass-module">
+          <summary>
+            <span class="navigation-icon" aria-hidden="true">
+              <svg class="control-icon"><use href="#icon-refresh"></use></svg>
+            </span>
+            <span class="navigation-copy">
+              <strong>開啟 YouTube 影片</strong>
+              <small>貼上網址切換目前控制目標</small>
+            </span>
+            <svg class="control-icon navigation-chevron" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+          </summary>
+          <form class="url-form" @submit.prevent="submitNavigation">
+            <label class="sr-only" for="video-url">YouTube 影片網址</label>
+            <input
+              id="video-url"
+              v-model="urlDraft"
+              type="url"
+              inputmode="url"
+              placeholder="貼上 YouTube 影片網址"
+              autocomplete="off"
+            />
+            <button
+              class="glass-action"
+              type="submit"
+              :disabled="!urlDraft.trim() || remote.state.phase !== 'connected'"
+            >
+              載入
+            </button>
+          </form>
+        </details>
       </section>
 
-      <details class="navigation-panel">
-        <summary class="section-heading">
-          <span class="section-index">06 / LOAD PRINT</span>
-          <span class="microcopy">YOUTUBE URL <span aria-hidden="true">⌄</span></span>
-        </summary>
-        <form class="url-form" @submit.prevent="submitNavigation">
-          <label id="navigate-title" class="sr-only" for="video-url">YouTube 影片網址</label>
-          <input
-            id="video-url"
-            v-model="urlDraft"
-            type="url"
-            inputmode="url"
-            placeholder="貼上 YouTube 影片網址"
-            autocomplete="off"
-          />
-          <button
-            class="secondary-button"
-            type="submit"
-            :disabled="!urlDraft.trim() || remote.state.phase !== 'connected'"
-          >
-            載入
-          </button>
-        </form>
-      </details>
-
-      <p v-if="remote.state.errorMessage" class="error-strip" role="alert">{{ remote.state.errorMessage }}</p>
-      <p v-else-if="!remote.state.status.extensionConnected" class="info-strip" role="status">
-        請在 Chrome 載入 Extension，Server 會等待 localhost 連線
+      <p v-if="remote.state.errorMessage" class="status-banner status-error" role="alert">
+        <svg class="control-icon tiny-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+        <span>{{ remote.state.errorMessage }}</span>
       </p>
-      <p v-else-if="remote.state.status.targetStatus === 'none'" class="info-strip" role="status">
-        找不到 YouTube 影片分頁，請先在 Chrome 開啟影片
+      <p v-else-if="remote.state.phase === 'reconnecting'" class="status-banner" role="status">
+        <span class="status-indicator tone-pending" aria-hidden="true"></span>
+        <span>連線中斷，正在重新連線，控制項會在恢復後自動啟用</span>
       </p>
-      <p v-else-if="remote.state.status.targetStatus === 'loading'" class="info-strip" role="status">
-        影片已找到，正在等待 YouTube 載入 metadata
+      <p v-else-if="!remote.state.status.extensionConnected" class="status-banner" role="status">
+        <span class="status-indicator tone-off" aria-hidden="true"></span>
+        <span>請在 Chrome 載入 Extension，Server 會等待 localhost 連線</span>
       </p>
-      <p v-else-if="remote.state.status.targetStatus === 'unsupported'" class="info-strip" role="status">
-        目前 YouTube 分頁不支援這項控制
+      <p v-else-if="remote.state.status.targetStatus === 'none'" class="status-banner" role="status">
+        <span class="status-indicator tone-off" aria-hidden="true"></span>
+        <span>找不到 YouTube 影片分頁，請先在 Chrome 開啟影片</span>
+      </p>
+      <p v-else-if="remote.state.status.targetStatus === 'loading'" class="status-banner" role="status">
+        <span class="status-indicator tone-pending" aria-hidden="true"></span>
+        <span>影片已找到，正在等待 YouTube 載入 metadata</span>
+      </p>
+      <p
+        v-else-if="remote.state.status.targetStatus === 'unsupported'"
+        class="status-banner status-error"
+        role="status"
+      >
+        <svg class="control-icon tiny-icon" aria-hidden="true"><use href="#icon-alert"></use></svg>
+        <span>目前 YouTube 分頁不支援這項控制</span>
       </p>
     </template>
   </main>

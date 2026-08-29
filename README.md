@@ -44,14 +44,14 @@ Vite 遙控介面預設使用 `http://localhost:5173`，並將 `/hubs` 與 `/api
 
 ## 首次配對
 
-1. 執行 Server，主控台會列出每個私人 IPv4 介面的配對網址與 QR Code
+1. 執行 Server，於 Server 電腦開啟 `http://localhost:5080/connect` 顯示配對 QR Code
 2. 在 Chrome 的 `chrome://extensions` 開啟開發人員模式
 3. 選擇「載入未封裝項目」，指定 `artifacts/chrome-extension`
 4. 在 Chrome 開啟 YouTube 影片，確認 Extension service worker 已連線
-5. 用手機掃描主控台 QR，手機頁面會讀取 URL fragment 中的 Token，存入 `localStorage` 後立即清除 fragment
+5. 用手機掃描 `/connect` 頁面的 QR Code，手機頁面會讀取 URL fragment 中的 Token，存入 `localStorage` 後立即清除 fragment
 6. 回到 YouTube 分頁操作播放、暫停、前後十秒、進度、音量、靜音、倍速或貼上 YouTube 網址
 
-配對 Token 會保存於 `%LOCALAPPDATA%\RemoteChromeYouTubeController\pairing-token`。需要重新列印資訊時可使用 `--show-pairing`，需要換發 Token 時使用 `--reset-pairing`
+配對 Token 會保存於 `%LOCALAPPDATA%\RemoteChromeYouTubeController\pairing-token`。需要換發 Token 時使用 `--reset-pairing`，之後重新整理 `/connect` 頁面即可顯示新的 QR Code
 
 ## 發佈
 
@@ -105,7 +105,7 @@ Playwright 目前涵蓋未配對引導、行動／窄螢幕／桌面 viewport、
 ### 連接埠或多張網卡問題
 
 - 確認 5080 沒有被其他程式占用
-- Server 會為每個私人 IPv4 介面列出獨立 QR，手機請掃描與自身網路相同的介面
+- `/connect` 會為每個私人 IPv4 介面顯示獨立 QR，手機請掃描與自身網路相同的介面
 - 若看不到私人位址，先檢查 Windows 網路 profile 與 Firewall；`127.0.0.1` 只適合在同一台電腦測試
 
 ### Token 無效

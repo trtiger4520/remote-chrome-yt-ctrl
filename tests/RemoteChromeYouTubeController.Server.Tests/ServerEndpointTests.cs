@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using RemoteChromeYouTubeController.Server.Services;
 
 namespace RemoteChromeYouTubeController.Server.Tests;
 
@@ -22,6 +24,15 @@ public sealed class ServerEndpointTests
 
         using var unauthorized = await client.GetAsync("/api/status", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+
+        var pairingCodes = await client.GetFromJsonAsync<PairingQrCode[]>("/api/pairing", TestContext.Current.CancellationToken)
+            ?? throw new InvalidOperationException("Pairing QR Code response was empty");
+        Assert.NotEmpty(pairingCodes);
+        Assert.All(pairingCodes, pairingCode =>
+        {
+            Assert.EndsWith($"#token={factory.PairingToken}", pairingCode.Url, StringComparison.Ordinal);
+            Assert.StartsWith("data:image/svg+xml;base64,", pairingCode.ImageUrl, StringComparison.Ordinal);
+        });
 
         using var authorizedRequest = new HttpRequestMessage(HttpMethod.Get, "/api/status");
         authorizedRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", factory.PairingToken);
