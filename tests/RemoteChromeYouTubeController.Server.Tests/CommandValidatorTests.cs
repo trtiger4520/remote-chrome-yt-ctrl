@@ -15,6 +15,7 @@ public sealed class CommandValidatorTests
             new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "togglePlayback"),
             new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "toggleFullscreen"),
             new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "toggleCaptions"),
+            new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "toggleLike"),
             new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "seekTo", NumberValue: 30),
             new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "seekBy", NumberValue: -10),
             new CommandRequest(ProtocolConstants.Version, Guid.NewGuid(), "setVolume", NumberValue: 0.5),

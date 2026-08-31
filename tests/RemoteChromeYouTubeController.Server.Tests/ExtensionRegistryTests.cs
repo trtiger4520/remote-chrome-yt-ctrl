@@ -77,7 +77,7 @@ public sealed class ExtensionRegistryTests
     }
 
     private static PlayerState CreateState(long sequence, double? duration = 60, bool isLive = false, bool canSeek = true) =>
-        new(ProtocolConstants.Version, sequence, "42", "Test", "https://www.youtube.com/watch?v=test", 1, duration, false, false, 0.5, 1, isLive, canSeek, false, false, DateTimeOffset.UtcNow);
+        new(ProtocolConstants.Version, sequence, "42", "Test", "https://www.youtube.com/watch?v=test", 1, duration, false, false, 0.5, 1, isLive, canSeek, false, false, false, DateTimeOffset.UtcNow);
 
     private static VideoMenu CreateMenu(long sequence, string targetKey = "page") =>
         new(

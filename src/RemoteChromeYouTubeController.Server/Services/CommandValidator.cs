@@ -26,7 +26,7 @@ public sealed class CommandValidator
 
         var result = action switch
         {
-            "togglePlayback" or "toggleFullscreen" or "toggleCaptions" => RequireNoValues(command),
+            "togglePlayback" or "toggleFullscreen" or "toggleCaptions" or "toggleLike" => RequireNoValues(command),
             "seekTo" => RequireNumber(command, value => value >= 0, "seekTo requires a non-negative number"),
             "seekBy" => RequireNumber(command, value => Math.Abs(value) <= 60, "seekBy must be between -60 and 60 seconds"),
             "setVolume" => RequireNumber(command, value => value is >= 0 and <= 1, "volume must be between 0 and 1"),

@@ -28,7 +28,7 @@ const mockConnection = vi.hoisted(() => ({
 
 vi.mock('./lib/connection', () => ({
   createCommand: (action: string, values: Record<string, unknown> = {}) => ({
-    protocolVersion: 2,
+    protocolVersion: 3,
     commandId: '00000000-0000-7000-8000-000000000001',
     action,
     ...values,
@@ -46,7 +46,7 @@ vi.mock('./lib/pairing', () => ({
 }));
 
 const readyPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
-  protocolVersion: 2 as const,
+  protocolVersion: 3 as const,
   sequence: 1,
   targetKey: 'tab-1',
   title: '測試影片標題',
@@ -61,6 +61,7 @@ const readyPlayer = (overrides: Partial<PlayerState> = {}): PlayerState => ({
   canSeek: true,
   isFullscreen: false,
   captionsEnabled: false,
+  liked: false,
   capturedAtUtc: new Date().toISOString(),
   ...overrides,
 });
@@ -146,6 +147,8 @@ describe('remote control surface', () => {
     expect(findButton(root, '靜音').getAttribute('aria-pressed')).toBe('false');
     expect(findButton(root, '字幕').getAttribute('aria-pressed')).toBe('false');
     expect(findButton(root, '全螢幕').getAttribute('aria-pressed')).toBe('false');
+    expect(findButton(root, '按讚').disabled).toBe(false);
+    expect(findButton(root, '按讚').getAttribute('aria-pressed')).toBe('false');
     expect(findButton(root, '播放速度').getAttribute('aria-expanded')).toBe('false');
 
     findButton(root, '播放').click();
@@ -154,6 +157,7 @@ describe('remote control surface', () => {
     findButton(root, '靜音').click();
     findButton(root, '字幕').click();
     findButton(root, '全螢幕').click();
+    findButton(root, '按讚').click();
     await settle();
 
     expect(mockConnection.sendCommand).toHaveBeenCalledWith(expect.objectContaining({ action: 'togglePlayback' }));
@@ -168,6 +172,17 @@ describe('remote control surface', () => {
     );
     expect(mockConnection.sendCommand).toHaveBeenCalledWith(expect.objectContaining({ action: 'toggleCaptions' }));
     expect(mockConnection.sendCommand).toHaveBeenCalledWith(expect.objectContaining({ action: 'toggleFullscreen' }));
+    expect(mockConnection.sendCommand).toHaveBeenCalledWith(expect.objectContaining({ action: 'toggleLike' }));
+
+    app.unmount();
+  });
+
+  it('disables liking when YouTube has not exposed the like button state', () => {
+    setReadyState(readyPlayer({ liked: null }));
+    const { app, root } = mountApp();
+
+    expect(findButton(root, '按讚').disabled).toBe(true);
+    expect(root.querySelector('.like-control .quick-value')?.textContent).toContain('無法使用');
 
     app.unmount();
   });
@@ -175,7 +190,7 @@ describe('remote control surface', () => {
   it('renders the captured video menu and navigates only after selection', async () => {
     setReadyState();
     const menu: VideoMenu = {
-      protocolVersion: 2,
+      protocolVersion: 3,
       sequence: 1,
       targetKey: 'tab-1',
       items: [{ title: '下一部影片', url: 'https://www.youtube.com/watch?v=next' }],

@@ -8,6 +8,7 @@ import {
 } from '@remote-youtube/protocol';
 import { v7 as uuidv7 } from 'uuid';
 import { isVideoFullscreen, toggleVideoFullscreen } from './fullscreen.js';
+import { readVideoLikeState, toggleVideoLike } from './like-button.js';
 import { collectYouTubeVideoMenuItems, resolveVideoTitle, type VideoMenuLink } from './video-menu.js';
 
 let video: HTMLVideoElement | null = null;
@@ -60,6 +61,7 @@ function currentState(): PlayerState | null {
     canSeek: hasMetadata && !isLive && video.seekable.length > 0,
     isFullscreen: isVideoFullscreen(video),
     captionsEnabled: captionsEnabled(),
+    liked: readVideoLikeState(),
     capturedAtUtc: new Date().toISOString(),
   };
 }
@@ -164,9 +166,15 @@ function ensureObserving(): void {
   if (observer) return;
   observer = new MutationObserver(() => {
     findAndBind();
+    report();
     reportVideoMenu();
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['aria-label', 'aria-pressed', 'title'],
+    childList: true,
+    subtree: true,
+  });
 }
 
 function bind(nextVideo: HTMLVideoElement): void {
@@ -261,6 +269,9 @@ async function execute(command: CommandRequest) {
         if (shouldEnable) tracks[0]!.mode = 'showing';
         break;
       }
+      case 'toggleLike':
+        toggleVideoLike();
+        break;
       case 'seekTo':
         if (!Number.isFinite(video.duration) || command.numberValue === undefined) throw new Error('seek unavailable');
         video.currentTime = Math.min(video.duration, Math.max(0, command.numberValue));

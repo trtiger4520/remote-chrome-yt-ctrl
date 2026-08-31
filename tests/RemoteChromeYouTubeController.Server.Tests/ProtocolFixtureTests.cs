@@ -34,6 +34,7 @@ public sealed class ProtocolFixtureTests
         Assert.Equal(ProtocolConstants.Version, state!.ProtocolVersion);
         Assert.Equal(120, state.Duration);
         Assert.True(state.CanSeek);
+        Assert.False(state.Liked);
     }
 
     [Fact]

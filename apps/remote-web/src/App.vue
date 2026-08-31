@@ -27,6 +27,12 @@ const isReady = computed(
 );
 const isLive = computed(() => player.value?.isLive ?? false);
 const canSeek = computed(() => isReady.value && !isLive.value && (player.value?.canSeek ?? false));
+const canLike = computed(() => isReady.value && player.value?.liked !== null && player.value?.liked !== undefined);
+const likeStatusLabel = computed(() => {
+  if (!player.value || !isReady.value) return '等待影片';
+  if (player.value.liked === null) return '無法使用';
+  return player.value.liked ? '已按讚' : '未按讚';
+});
 const duration = computed(() => player.value?.duration ?? 0);
 const currentTime = computed(() => {
   if (seekDraft.value !== null) {
@@ -357,6 +363,12 @@ onBeforeUnmount(() => {
         <rect x="3.5" y="6" width="17" height="12" rx="3"></rect>
         <path d="M7 11h4M13 11h4M7 14h3M12 14h5"></path>
       </symbol>
+      <symbol id="icon-like" viewBox="0 0 24 24">
+        <path d="M7 10v10H4V10h3z"></path>
+        <path
+          d="M7 10h2.5l2.4-5.6A1.8 1.8 0 0 1 15.4 5l-.7 5H18a2.5 2.5 0 0 1 2.45 3l-1.05 5A2.5 2.5 0 0 1 16.95 20H7"
+        ></path>
+      </symbol>
       <symbol id="icon-fullscreen" viewBox="0 0 24 24">
         <path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4"></path>
       </symbol>
@@ -594,6 +606,19 @@ onBeforeUnmount(() => {
             <svg class="control-icon quick-icon" aria-hidden="true"><use href="#icon-fullscreen"></use></svg>
             <span class="quick-title">全螢幕</span>
             <span class="quick-value">{{ player?.isFullscreen ? '已開啟' : '關閉' }}</span>
+          </button>
+          <button
+            class="quick-control like-control"
+            :class="{ active: player?.liked === true }"
+            type="button"
+            :disabled="!canLike"
+            :aria-pressed="player?.liked === true"
+            aria-label="按讚"
+            @click="runCommand('toggleLike')"
+          >
+            <svg class="control-icon quick-icon" aria-hidden="true"><use href="#icon-like"></use></svg>
+            <span class="quick-title">按讚</span>
+            <span class="quick-value">{{ likeStatusLabel }}</span>
           </button>
         </section>
 

@@ -49,7 +49,7 @@ Vite 遙控介面預設使用 `http://localhost:5173`，並將 `/hubs` 與 `/api
 3. 選擇「載入未封裝項目」，指定 `artifacts/chrome-extension`
 4. 在 Chrome 開啟 YouTube 影片，確認 Extension service worker 已連線
 5. 用手機掃描 `/connect` 頁面的 QR Code，手機頁面會讀取 URL fragment 中的 Token，存入 `localStorage` 後立即清除 fragment
-6. 回到 YouTube 分頁操作播放、暫停、前後十秒、進度、音量、靜音、倍速，或從「畫面上的影片」選單手動切換
+6. 回到 YouTube 分頁操作播放、暫停、前後十秒、進度、音量、靜音、倍速、字幕、全螢幕與按讚，或從「畫面上的影片」選單手動切換
 7. 需要時可在折疊式輸入區貼上 HTTPS YouTube 網址
 
 配對 Token 會保存於 `%LOCALAPPDATA%\RemoteChromeYouTubeController\pairing-token`。需要換發 Token 時使用 `--reset-pairing`，之後重新整理 `/connect` 頁面即可顯示新的 QR Code

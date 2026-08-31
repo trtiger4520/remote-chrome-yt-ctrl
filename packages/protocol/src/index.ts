@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
-export const PROTOCOL_VERSION = 2 as const;
+export const PROTOCOL_VERSION = 3 as const;
 
 export const commandActionSchema = z.enum([
   'togglePlayback',
   'toggleFullscreen',
   'toggleCaptions',
+  'toggleLike',
   'seekTo',
   'seekBy',
   'setVolume',
@@ -102,6 +103,7 @@ export const playerStateSchema = z.object({
   canSeek: z.boolean(),
   isFullscreen: z.boolean(),
   captionsEnabled: z.boolean(),
+  liked: z.boolean().nullable(),
   capturedAtUtc: z.string().datetime({ offset: true }),
 });
 export type PlayerState = z.infer<typeof playerStateSchema>;

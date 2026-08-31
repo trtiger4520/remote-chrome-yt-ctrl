@@ -29,7 +29,7 @@ try {
     $version = [ordered]@{
         product = 'RemoteChromeYouTubeController'
         productVersion = '0.1.0'
-        protocolVersion = 1
+        protocolVersion = 3
         configuration = $Configuration
         generatedAtUtc = [DateTime]::UtcNow.ToString('O')
     }
