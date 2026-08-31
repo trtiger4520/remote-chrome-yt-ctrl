@@ -75,6 +75,7 @@ Windows Firewall 請只針對私人網路 profile 建立 TCP 8154 入站規則�
 ## 驗證命令
 
 ```powershell
+pnpm docs:check
 dotnet build RemoteChromeYouTubeController.slnx --configuration Release
 dotnet test RemoteChromeYouTubeController.slnx --configuration Release --no-build
 dotnet format RemoteChromeYouTubeController.slnx --verify-no-changes
@@ -121,4 +122,5 @@ Playwright 目前涵蓋未配對引導、行動／窄螢幕／桌面 viewport、
 - [PRODUCT.md](PRODUCT.md)：產品資訊與約束
 - [DESIGN.md](DESIGN.md)：已選定的行動版視覺方向與 UI 契約
 - [SECURITY.md](SECURITY.md)：LAN HTTP 威脅模型與未來 HTTPS 變更
-- [AGENTS.md](AGENTS.md)：固定工具版本與命令
+- [AGENTS.md](AGENTS.md)：Agent 操作、工具路由、知識選讀與文件維護契約
+- [docs/knowledge/index.md](docs/knowledge/index.md)：OKF v0.2 架構、功能、契約、決策、操作與品質知識入口

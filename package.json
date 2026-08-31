@@ -4,6 +4,7 @@
   "packageManager": "pnpm@11.0.9",
   "scripts": {
     "build": "pnpm --filter @remote-youtube/protocol build && pnpm --filter @remote-youtube/remote-web build && pnpm --filter @remote-youtube/chrome-extension build",
+    "docs:check": "pwsh -NoProfile -File ./scripts/validate-knowledge.ps1",
     "dev:web": "pnpm --filter @remote-youtube/remote-web dev",
     "dev:extension": "pnpm --filter @remote-youtube/chrome-extension dev",
     "lint": "pnpm -r lint",
