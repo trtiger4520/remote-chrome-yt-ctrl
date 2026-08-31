@@ -62,7 +62,7 @@ Remote Web 顯示 command error 五秒，不會因單次失敗重置 connection
 - live stream 或 `canSeek=false` 時停用 seek slider 與前後 seek
 - `liked=null` 時停用按讚控制
 - 控制 active state 以 Extension 回報的 PlayerState 為準，不以 local click 樂觀切換
-- 音量拖動約每 100ms 合併送出，避免產生過多 command
+- 音量使用兩欄寬的緊湊水平滑桿，拖動約每 100ms 合併送出，避免產生過多 command
 
 ## 失敗模式
 
@@ -101,4 +101,3 @@ Remote Web 顯示 command error 五秒，不會因單次失敗重置 connection
 - [Realtime protocol](../contracts/realtime-protocol.md)
 - [Player state synchronization](player-state-sync.md)
 - [UI quality](../quality/testing-and-ui-quality.md)
-
