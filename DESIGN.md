@@ -32,7 +32,7 @@
 - Extension offline、無 target、loading、unsupported：在連線模組與狀態列清楚說明下一步
 - ready：啟用完整控制面板，toggle 的 active 樣式以遠端回傳狀態為準
 - live 或 `canSeek=false`：停用進度與前後 seek，保留播放、音量、倍速、全螢幕與字幕
-- 影片選單：顯示目前 YouTube 畫面已載入的其他影片連結，使用者點選後才切換
+- 影片選單：顯示目前 YouTube 畫面已載入的其他影片連結與由影片 ID 推導的 YouTube 預覽圖，使用者點選後才切換
 - command error：顯示五秒可消失的錯誤列，不重置整個連線
 
 按下控制時使用約 160ms 的縮放回饋與約 220ms 的回彈，狀態切換使用短促的背景與邊緣轉換。`prefers-reduced-motion` 會關閉位移、縮放與脈動，`aria-live` 僅用於連線與錯誤，不播報每次 timeupdate
@@ -40,7 +40,7 @@
 ## 內容與邊界
 
 - 影片標題沿用協定允許的最多 500 字元並限制視覺行數，完整內容保留於 title
-- 影片 URL 沿用協定的 URL 驗證與省略顯示，不產生縮圖 placeholder，因為 PlayerState 沒有縮圖資料
+- 影片 URL 沿用協定的 URL 驗證與省略顯示，影片選單由 watch、shorts、live 或 youtu.be URL 推導同源 `/api/youtube-thumbnail/{id}` 預覽圖，由 Server 代抓固定的 YouTube 圖片來源；預覽圖失敗時保留編號底圖
 - 影片選單使用獨立的 `VideoMenu` 狀態，來源是 Extension 從目前 YouTube DOM 擷取的可見影片連結
 - 手機選單只送出使用者明確點選的 `navigate` 指令，不自動續播或自動切換
 - `/connect` 配對頁與其既有工作樹修改維持原樣

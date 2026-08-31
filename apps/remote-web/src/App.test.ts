@@ -185,6 +185,10 @@ describe('remote control surface', () => {
     const { app, root } = mountApp();
 
     expect(root.textContent).toContain('下一部影片');
+    expect(root.querySelector<HTMLImageElement>('.video-menu-thumbnail')?.getAttribute('src')).toBe(
+      '/api/youtube-thumbnail/next',
+    );
+    expect(root.querySelector<HTMLImageElement>('.video-menu-thumbnail')?.getAttribute('loading')).toBe('lazy');
     expect(mockConnection.sendCommand).not.toHaveBeenCalled();
 
     const menuButton = root.querySelector<HTMLButtonElement>('.video-menu-item');

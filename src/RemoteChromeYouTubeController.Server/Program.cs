@@ -33,6 +33,14 @@ builder.WebHost.UseUrls(builder.Configuration["Server:Url"] ?? $"http://{serverO
 builder.Services.AddSingleton<PairingTokenService>();
 builder.Services.AddSingleton<ExtensionRegistry>();
 builder.Services.AddSingleton<CommandValidator>();
+builder.Services.AddHttpClient<YouTubeThumbnailService>(client =>
+{
+    client.BaseAddress = new Uri("https://i.ytimg.com/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    AllowAutoRedirect = false,
+});
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = PairingTokenAuthenticationHandler.SchemeName;
@@ -45,15 +53,27 @@ builder.Services.AddCors(options => options.AddPolicy("Extension", policy => pol
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));
-builder.Services.AddRateLimiter(options => options.AddPolicy("hub-negotiate", context =>
-    RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 20,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-        })));
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("hub-negotiate", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+    options.AddPolicy("thumbnail", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
 builder.Services.AddHealthChecks().AddCheck("process", () => HealthCheckResult.Healthy());
 builder.Services.AddSignalR(options =>
 {
@@ -125,6 +145,32 @@ app.UseStaticFiles();
 app.MapHealthChecks("/health/live");
 app.MapGet("/api/pairing", () =>
     Results.Ok(PairingUrlPrinter.CreateQrCodes(serverOptions.Port, pairing.EnsureToken())));
+// Thumbnail requests come from img elements and cannot attach the pairing bearer token
+app.MapGet("/api/youtube-thumbnail/{videoId}", async Task<IResult> (
+    string videoId,
+    YouTubeThumbnailService thumbnails,
+    HttpContext context,
+    CancellationToken cancellationToken) =>
+{
+    var result = await thumbnails.FetchAsync(videoId, cancellationToken);
+    if (result.Status == YouTubeThumbnailFetchStatus.InvalidVideoId)
+    {
+        return TypedResults.BadRequest();
+    }
+
+    if (result.Status == YouTubeThumbnailFetchStatus.NotFound)
+    {
+        return TypedResults.NotFound();
+    }
+
+    if (result.Status != YouTubeThumbnailFetchStatus.Success || result.Content is null || result.ContentType is null)
+    {
+        return TypedResults.StatusCode(StatusCodes.Status502BadGateway);
+    }
+
+    context.Response.Headers.CacheControl = "public, max-age=86400";
+    return TypedResults.File(result.Content, result.ContentType);
+}).RequireRateLimiting("thumbnail");
 app.MapGet("/api/status", (ExtensionRegistry registry) =>
     Results.Ok(new RemoteSnapshot(registry.GetStatus(), registry.GetState(), registry.GetVideoMenu())))
     .RequireAuthorization();

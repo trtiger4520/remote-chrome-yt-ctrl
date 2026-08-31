@@ -1,29 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { toggleVideoFullscreen } from './fullscreen.js';
+import { isVideoFullscreen, toggleVideoFullscreen } from './fullscreen.js';
 
 describe('video fullscreen', () => {
-  const requestFullscreen = vi.fn(async () => undefined);
-  const exitFullscreen = vi.fn(async () => undefined);
-  const video = { requestFullscreen } as unknown as HTMLVideoElement;
+  const click = vi.fn();
+  const querySelector = vi.fn(() => ({ click }));
+  const player = { querySelector, closest: vi.fn(() => player) } as unknown as HTMLElement;
+  const closest = vi.fn(() => player);
+  const video = { closest } as unknown as HTMLVideoElement;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal('document', { fullscreenElement: null, exitFullscreen });
+    vi.stubGlobal('document', { fullscreenElement: null, querySelector: vi.fn() });
   });
 
-  it('enters fullscreen on the video element', async () => {
+  it('clicks the fullscreen button in the current YouTube player', async () => {
     await toggleVideoFullscreen(video);
 
-    expect(requestFullscreen).toHaveBeenCalledOnce();
-    expect(exitFullscreen).not.toHaveBeenCalled();
+    expect(closest).toHaveBeenCalledWith('.html5-video-player');
+    expect(querySelector).toHaveBeenCalledWith('.ytp-fullscreen-button');
+    expect(click).toHaveBeenCalledOnce();
   });
 
-  it('exits fullscreen when the video is already fullscreen', async () => {
-    vi.stubGlobal('document', { fullscreenElement: video, exitFullscreen });
+  it('fails clearly when the YouTube fullscreen button is unavailable', async () => {
+    const unavailableVideo = { closest: vi.fn(() => null) } as unknown as HTMLVideoElement;
 
-    await toggleVideoFullscreen(video);
+    await expect(toggleVideoFullscreen(unavailableVideo)).rejects.toThrow('YouTube fullscreen button is unavailable');
+  });
 
-    expect(exitFullscreen).toHaveBeenCalledOnce();
-    expect(requestFullscreen).not.toHaveBeenCalled();
+  it('recognizes the YouTube player as fullscreen', () => {
+    vi.stubGlobal('document', { fullscreenElement: player, querySelector: vi.fn() });
+
+    expect(isVideoFullscreen(video)).toBe(true);
   });
 });

@@ -63,6 +63,13 @@ const videoMenuItems = computed(() => {
   if (!menu || !player.value || menu.targetKey !== player.value.targetKey) return [];
   return menu.items;
 });
+const unavailableThumbnailUrls = ref(new Set<string>());
+const videoMenuItemsWithThumbnails = computed(() =>
+  videoMenuItems.value.map((item) => ({
+    ...item,
+    thumbnailUrl: getYouTubeThumbnailUrl(item.url),
+  })),
+);
 const canNavigate = computed(() => remote.state.phase === 'connected' && remote.state.status.extensionConnected);
 const videoMenuSummary = computed(() => {
   if (!remote.state.status.extensionConnected) return '等待 Extension 回報目前 YouTube 畫面';
@@ -146,6 +153,37 @@ function formatVideoUrl(url: string): string {
   } catch {
     return url;
   }
+}
+
+function getYouTubeVideoId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (!['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(parsed.hostname)) {
+      return null;
+    }
+
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.split('/').filter(Boolean)[0] ?? null;
+    }
+
+    const path = parsed.pathname.replace(/\/$/, '');
+    if (path === '/watch') return parsed.searchParams.get('v');
+    if (path.startsWith('/shorts/') || path.startsWith('/live/')) {
+      return path.split('/').filter(Boolean)[1] ?? null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function getYouTubeThumbnailUrl(url: string): string | null {
+  const videoId = getYouTubeVideoId(url);
+  return videoId ? `/api/youtube-thumbnail/${encodeURIComponent(videoId)}` : null;
+}
+
+function handleThumbnailError(url: string) {
+  unavailableThumbnailUrls.value = new Set(unavailableThumbnailUrls.value).add(url);
 }
 
 async function runCommand(
@@ -570,8 +608,8 @@ onBeforeUnmount(() => {
             }}</span>
           </div>
           <p class="video-menu-summary">{{ videoMenuSummary }}</p>
-          <ol v-if="videoMenuItems.length > 0" class="video-menu-list">
-            <li v-for="(item, index) in videoMenuItems" :key="item.url">
+          <ol v-if="videoMenuItemsWithThumbnails.length > 0" class="video-menu-list">
+            <li v-for="(item, index) in videoMenuItemsWithThumbnails" :key="item.url">
               <button
                 class="video-menu-item"
                 type="button"
@@ -579,7 +617,18 @@ onBeforeUnmount(() => {
                 :title="item.title"
                 @click="selectVideo(item.url)"
               >
-                <span class="video-menu-index" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="video-menu-thumb" aria-hidden="true">
+                  <img
+                    v-if="item.thumbnailUrl && !unavailableThumbnailUrls.has(item.url)"
+                    class="video-menu-thumbnail"
+                    :src="item.thumbnailUrl"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    @error="handleThumbnailError(item.url)"
+                  />
+                  <span class="video-menu-index">{{ String(index + 1).padStart(2, '0') }}</span>
+                </span>
                 <span class="video-menu-copy">
                   <strong>{{ item.title }}</strong>
                   <small>{{ formatVideoUrl(item.url) }}</small>

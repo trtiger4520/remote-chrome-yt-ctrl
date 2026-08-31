@@ -7,7 +7,7 @@ import {
   type VideoMenu,
 } from '@remote-youtube/protocol';
 import { v7 as uuidv7 } from 'uuid';
-import { toggleVideoFullscreen } from './fullscreen.js';
+import { isVideoFullscreen, toggleVideoFullscreen } from './fullscreen.js';
 import { collectYouTubeVideoMenuItems, resolveVideoTitle, type VideoMenuLink } from './video-menu.js';
 
 let video: HTMLVideoElement | null = null;
@@ -58,7 +58,7 @@ function currentState(): PlayerState | null {
     playbackRate: video.playbackRate,
     isLive,
     canSeek: hasMetadata && !isLive && video.seekable.length > 0,
-    isFullscreen: document.fullscreenElement === video,
+    isFullscreen: isVideoFullscreen(video),
     captionsEnabled: captionsEnabled(),
     capturedAtUtc: new Date().toISOString(),
   };
