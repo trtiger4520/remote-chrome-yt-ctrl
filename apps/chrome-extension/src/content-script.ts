@@ -8,13 +8,17 @@ import {
 } from '@remote-youtube/protocol';
 import { v7 as uuidv7 } from 'uuid';
 import { toggleVideoFullscreen } from './fullscreen.js';
-import { collectYouTubeVideoMenuItems, type VideoMenuLink } from './video-menu.js';
+import { collectYouTubeVideoMenuItems, resolveVideoTitle, type VideoMenuLink } from './video-menu.js';
 
 let video: HTMLVideoElement | null = null;
 let sequence = 0;
 const pageInstanceId = uuidv7();
 const maxVideoMenuItems = 20;
 const menuReportDelayMs = 250;
+const videoCardSelector =
+  'ytd-compact-video-renderer, ytd-video-renderer, ytd-rich-item-renderer, ytd-grid-video-renderer, ytd-reel-item-renderer, ytd-playlist-video-renderer, yt-lockup-view-model, .yt-lockup-view-model';
+const videoTitleSelector =
+  '#video-title, #video-title-link, #video-title-text, .yt-lockup-metadata-view-model__heading-reset, .yt-lockup-metadata-view-model__title, h3';
 let reportTimer: ReturnType<typeof setTimeout> | undefined;
 let menuReportTimer: ReturnType<typeof setTimeout> | undefined;
 let menuSequence = 0;
@@ -85,17 +89,19 @@ function resetVideoMenu(): void {
 }
 
 function videoLinkTitle(link: HTMLAnchorElement): string {
-  const card = link.closest<HTMLElement>(
-    'ytd-compact-video-renderer, ytd-video-renderer, ytd-rich-item-renderer, ytd-grid-video-renderer, ytd-reel-item-renderer, ytd-playlist-video-renderer',
+  const directTitle = link.closest<HTMLElement>(
+    '#video-title, #video-title-link, #video-title-text, .yt-lockup-metadata-view-model__heading-reset',
   );
-  const cardTitle = card?.querySelector<HTMLElement>('#video-title, #video-title-link, #video-title-text')?.textContent;
-  return (
-    cardTitle?.replace(/\s+/g, ' ').trim() ||
-    link.getAttribute('title')?.replace(/\s+/g, ' ').trim() ||
-    link.getAttribute('aria-label')?.replace(/\s+/g, ' ').trim() ||
-    link.textContent?.replace(/\s+/g, ' ').trim() ||
-    'YouTube 影片'
-  );
+  const cardTitle =
+    directTitle ?? link.closest<HTMLElement>(videoCardSelector)?.querySelector<HTMLElement>(videoTitleSelector);
+  return resolveVideoTitle([
+    cardTitle?.getAttribute('title'),
+    cardTitle?.getAttribute('aria-label'),
+    cardTitle?.textContent,
+    link.getAttribute('title'),
+    link.getAttribute('aria-label'),
+    link.textContent,
+  ]);
 }
 
 function isVisibleVideoLink(link: HTMLAnchorElement): boolean {

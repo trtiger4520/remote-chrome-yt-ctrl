@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectYouTubeVideoMenuItems } from './video-menu.js';
+import { collectYouTubeVideoMenuItems, resolveVideoTitle } from './video-menu.js';
 
 describe('YouTube video menu links', () => {
   const currentUrl = 'https://www.youtube.com/watch?v=current';
@@ -45,5 +45,12 @@ describe('YouTube video menu links', () => {
         1,
       ),
     ).toEqual([{ title: 'YouTube 影片', url: 'https://www.youtube.com/watch?v=first' }]);
+  });
+
+  it('ignores a thumbnail duration while resolving the title from later candidates', () => {
+    expect(resolveVideoTitle(['2:03:39', '新版右側推薦影片'])).toBe('新版右側推薦影片');
+    expect(collectYouTubeVideoMenuItems([{ href: '/watch?v=first', title: '38:30' }], currentUrl)).toEqual([
+      { title: 'YouTube 影片', url: 'https://www.youtube.com/watch?v=first' },
+    ]);
   });
 });

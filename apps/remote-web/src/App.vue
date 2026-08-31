@@ -344,7 +344,7 @@ onBeforeUnmount(() => {
         </span>
         <div>
           <p class="brand-name">YouTube Remote</p>
-          <p class="brand-context">PRIVATE LAN / 5080</p>
+          <p class="brand-context">PRIVATE LAN / 8154</p>
         </div>
       </div>
       <div class="connection-badge" :class="phaseClass" role="status" aria-live="polite">

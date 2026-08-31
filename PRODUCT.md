@@ -24,7 +24,7 @@ The product bridges a phone, an ASP.NET Core server, and a Manifest V3 Extension
 
 ## Operating Context
 
-The server runs as a console application on a Windows computer and binds to the private LAN on port 5080. The phone opens the server-hosted web remote. The Extension is loaded as an unpacked developer-mode extension and connects only to localhost. YouTube may replace its video element during SPA navigation, and the Extension must rebind to the active element
+The server runs as a console application on a Windows computer and binds to the private LAN on port 8154. The phone opens the server-hosted web remote. The Extension is loaded as an unpacked developer-mode extension and connects only to localhost. YouTube may replace its video element during SPA navigation, and the Extension must rebind to the active element
 
 ## Capabilities and Constraints
 

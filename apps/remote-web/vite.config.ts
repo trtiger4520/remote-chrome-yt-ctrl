@@ -12,10 +12,10 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/hubs': {
-        target: 'http://127.0.0.1:5080',
+        target: 'http://127.0.0.1:8154',
         ws: true,
       },
-      '/api': 'http://127.0.0.1:5080',
+      '/api': 'http://127.0.0.1:8154',
     },
   },
   test: {

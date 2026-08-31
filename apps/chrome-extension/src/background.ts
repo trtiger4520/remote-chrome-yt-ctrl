@@ -14,7 +14,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 import { isSupportedYouTubeUrl, normalizeYouTubeUrl } from './targeting.js';
 
-const defaultServerUrl = 'http://127.0.0.1:5080';
+const defaultServerUrl = 'http://127.0.0.1:8154';
 const targetStorageKey = 'remote-youtube.target-tab-id';
 const serverStorageKey = 'remote-youtube.server-url';
 const heartbeatMs = 20_000;

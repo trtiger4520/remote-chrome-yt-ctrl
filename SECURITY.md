@@ -19,7 +19,7 @@ LAN HTTP 的限制仍然存在：SignalR 在 WebSocket transport 可能把 acces
 
 ## Windows Firewall
 
-請由管理者只為私人網路 profile 建立 5080 TCP 入站規則。不要為 Public profile 開放，也不要把埠口轉發到路由器或雲端。程式不會自動改寫 Firewall 規則
+請由管理者只為私人網路 profile 建立 8154 TCP 入站規則。不要為 Public profile 開放，也不要把埠口轉發到路由器或雲端。程式不會自動改寫 Firewall 規則
 
 ## 未來 Cloudflare Tunnel 必須重新設計
 

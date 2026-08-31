@@ -19,5 +19,4 @@ dotnet format RemoteChromeYouTubeController.slnx --verify-no-changes
 
 Run the Server with `dotnet run --project src/RemoteChromeYouTubeController.Server` and load `artifacts/chrome-extension` as an unpacked Chrome extension
 
-The first release is private-LAN HTTP only. Never expose port 5080 directly to the public Internet
-
+The first release is private-LAN HTTP only. Never expose port 8154 directly to the public Internet

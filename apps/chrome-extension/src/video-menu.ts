@@ -1,9 +1,26 @@
 import type { VideoMenuItem } from '@remote-youtube/protocol';
 import { normalizeYouTubeUrl } from './targeting.js';
 
+const fallbackVideoTitle = 'YouTube 影片';
+const videoDurationPattern = /^(?:\d{1,2}:)?\d{1,2}:\d{2}$/;
+
 export interface VideoMenuLink {
   href: string;
   title?: string;
+}
+
+export function normalizeVideoTitle(rawTitle: string | null | undefined): string | null {
+  const title = rawTitle?.replace(/\s+/g, ' ').trim() ?? '';
+  if (!title || videoDurationPattern.test(title)) return null;
+  return title.slice(0, 500);
+}
+
+export function resolveVideoTitle(candidates: Iterable<string | null | undefined>): string {
+  for (const candidate of candidates) {
+    const title = normalizeVideoTitle(candidate);
+    if (title) return title;
+  }
+  return fallbackVideoTitle;
 }
 
 function normalizeVideoUrl(rawUrl: string | undefined, baseUrl: string): string | null {
@@ -32,11 +49,6 @@ function videoKey(normalizedUrl: string): string | null {
   }
 }
 
-function normalizeTitle(rawTitle: string | undefined): string {
-  const title = rawTitle?.replace(/\s+/g, ' ').trim() ?? '';
-  return title.slice(0, 500) || 'YouTube 影片';
-}
-
 export function collectYouTubeVideoMenuItems(
   links: Iterable<VideoMenuLink>,
   currentUrl: string,
@@ -52,7 +64,7 @@ export function collectYouTubeVideoMenuItems(
     const key = normalized ? videoKey(normalized) : null;
     if (!normalized || !key || key === currentKey || seen.has(key)) continue;
     seen.add(key);
-    results.push({ title: normalizeTitle(link.title), url: normalized });
+    results.push({ title: resolveVideoTitle([link.title]), url: normalized });
     if (results.length >= maxItems) break;
   }
 

@@ -7,7 +7,7 @@ public sealed class ServerOptions
     public const string SectionName = "Server";
 
     [Range(1, 65535)]
-    public int Port { get; set; } = 5080;
+    public int Port { get; set; } = 8154;
 
     public string BindAddress { get; set; } = "0.0.0.0";
 
